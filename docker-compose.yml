@@ -1,6 +1,7 @@
 services:
   pg_with_backup:
     build: .
+    container_name: pg_with_backup
     restart: always
     # Environment variables are now loaded from the .env file
     environment:
