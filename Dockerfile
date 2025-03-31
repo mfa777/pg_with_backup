@@ -1,5 +1,7 @@
 # Use an official PostgreSQL image (choose a specific version, e.g., 17)
-FROM postgres:17
+# FROM postgres:17
+# lobechat require pgvector
+FROM pgvector/pgvector:pg17
 
 # Install necessary tools: cron, curl, unzip (for rclone install), gnupg, ca-certificates, tzdata
 # Also clean up apt cache afterwards
