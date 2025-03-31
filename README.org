@@ -1,0 +1,90 @@
+#+title: PostgreSQL with Automated Encrypted Backups
+
+* PostgreSQL with Automated Encrypted Backups
+
+Sets up PostgreSQL with automated, encrypted backups to remote storage using Rclone and Age.
+
+** Features
+
+- PostgreSQL Database
+- Automated daily backups (configurable) via Cron
+- Client-side encryption via Age
+- Uploads via Rclone to configured remote storage
+- Only uploads if data has changed
+- Uses Docker named volume for data persistence
+
+** Quick Setup
+
+1. *Create =.env= file:* Create a file named =.env= in the project root with the following (replace placeholders):
+   #+BEGIN_SRC conf
+   # --- PostgreSQL ---
+   POSTGRES_USER=your_db_user
+   POSTGRES_PASSWORD=your_strong_password
+   POSTGRES_DB=your_initial_db
+
+   # --- Backup ---
+   # Generate with: cat ~/.config/rclone/rclone.conf | base64 -w 0
+   RCLONE_CONFIG_BASE64="PASTE_YOUR_BASE64_ENCODED_RCLONE_CONFIG_HERE"
+   # Your Age public key (starts with 'age1...')
+   AGE_PUBLIC_KEY="age1..."
+   # Rclone remote path (e.g., "my_remote:my_postgres_backups")
+   REMOTE_PATH="your_rclone_remote:path/to/backups"
+   # Optional: Container timezone (e.g., "UTC", "America/New_York")
+   TZ=UTC
+   # Optional: Telegram notifications
+   # TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
+   # TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
+   #+END_SRC
+   *Important:* Add =.env= to your =.gitignore=. Securely save your Age *private* key elsewhere.
+
+2. *(Optional) Customize PostgreSQL:* Place your =postgresql.conf= and =pg_hba.conf= in the =pg_config/= directory.
+
+** Accessing the Database
+
+*** Accessing from Host (CLI)
+
+- Connect using a client (e.g., =psql=) to =localhost:5432= (or the mapped port specified in =docker-compose.yml=).
+- Use the =POSTGRES_USER= and =POSTGRES_PASSWORD= from your =.env= file.
+  #+BEGIN_SRC bash
+  psql -h localhost -p 5432 -U your_db_user -d your_initial_db
+  #+END_SRC
+
+*** Accessing from Host (Adminer)
+
+Adminer is a lightweight database management tool. You can run it as a separate Docker container.
+
+*Open Adminer:* Navigate to =http://localhost:8080= in your web browser.
+
+*** Accessing from Another Container (Shared Network)
+
+If you have another application running in a Docker container and want it to connect to this PostgreSQL database, ensure both containers are on the same Docker network.
+
+#+begin_src yaml
+  # --- Example: Another application container's docker-compose.yaml ---
+  services:
+    my_app:
+      image: your_app_image
+      restart: always
+      environment:
+        DATABASE_URL: "postgresql://app_user:app_password@postgres:5432/app_database"
+      networks:
+        - shared_net
+  networks:
+    shared_net:
+      external: true
+      name: pg_shared_network # use the same network as the PostgreSQL container
+#+end_src
+
+** Logs
+
+- View PostgreSQL and backup logs:
+  #+BEGIN_SRC bash
+  docker-compose logs -f pg_with_backup
+  #+END_SRC
+
+** Restore
+
+1. Download the =.sql.gz.age= backup file from your Rclone remote.
+2. Decrypt: =age -d -i /path/to/private.key backup.sql.gz.age > backup.sql.gz=
+3. Unzip: =gunzip backup.sql.gz=
+4. Restore: =psql -h localhost -U your_db_user -d your_target_db < backup.sql=
