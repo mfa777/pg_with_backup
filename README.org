@@ -15,8 +15,9 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 ** Quick Setup
 
-1. *Create =.env= file:* Create a file named =.env= in the project root with the following (replace placeholders):
-   #+begin_src conf
+1. *Create .env file:* Create a file named =.env= in the project root with the following (replace placeholders):
+
+#+begin_src sh
    # --- PostgreSQL ---
    POSTGRES_USER=your_db_user
    POSTGRES_PASSWORD=your_strong_password
@@ -34,7 +35,7 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
    # Optional: Telegram notifications
    # TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
    # TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
-   #+end_src
+#+end_src
 
 2. *(Optional) Customize PostgreSQL:* Place your =postgresql.conf= and =pg_hba.conf= in the =pg_config/= directory.
 
@@ -46,9 +47,10 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 - Connect using a client (e.g., =psql=) to =localhost:5432= (or the mapped port specified in =docker-compose.yml=).
 - Use the =POSTGRES_USER= and =POSTGRES_PASSWORD= from your =.env= file.
-  #+begin_src bash
+
+#+begin_src sh
   psql -h localhost -p 5432 -U your_db_user -d your_initial_db
-  #+end_src
+#+end_src
 
 *** Accessing from Host (Adminer)
 
