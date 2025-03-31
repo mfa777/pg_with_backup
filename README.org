@@ -6,17 +6,19 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 ** Features
 
-- PostgreSQL Database
-- Automated daily backups (configurable) via Cron
+- PostgreSQL Database (with pg_vector extension)
+- Automated daily backups (configurable)
 - Client-side encryption via Age
 - Uploads via Rclone to configured remote storage
 - Only uploads if data has changed
-- Uses Docker named volume for data persistence
+- Retains backups for a configurable number of days
+- DB can be connected from host or another container
+- Optional: Telegram notifications when backups fail
 
 ** Quick Setup
 
 1. *Create =.env= file:* Create a file named =.env= in the project root with the following (replace placeholders):
-   #+BEGIN_SRC conf
+   #+BEGIN_src conf
    # --- PostgreSQL ---
    POSTGRES_USER=your_db_user
    POSTGRES_PASSWORD=your_strong_password
@@ -34,8 +36,7 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
    # Optional: Telegram notifications
    # TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
    # TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
-   #+END_SRC
-   *Important:* Add =.env= to your =.gitignore=. Securely save your Age *private* key elsewhere.
+   #+END_src
 
 2. *(Optional) Customize PostgreSQL:* Place your =postgresql.conf= and =pg_hba.conf= in the =pg_config/= directory.
 
@@ -47,9 +48,9 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 - Connect using a client (e.g., =psql=) to =localhost:5432= (or the mapped port specified in =docker-compose.yml=).
 - Use the =POSTGRES_USER= and =POSTGRES_PASSWORD= from your =.env= file.
-  #+BEGIN_SRC bash
+  #+BEGIN_src bash
   psql -h localhost -p 5432 -U your_db_user -d your_initial_db
-  #+END_SRC
+  #+END_src
 
 *** Accessing from Host (Adminer)
 
@@ -80,9 +81,10 @@ If you have another application running in a Docker container and want it to con
 ** Logs
 
 - View PostgreSQL and backup logs:
-  #+BEGIN_SRC bash
-  docker-compose logs -f pg_with_backup
-  #+END_SRC
+#+begin_src sh
+  sudo docker-compose logs -f pg_with_backup
+#+end_src
+
 
 ** Restore
 
