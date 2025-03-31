@@ -39,6 +39,8 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 2. *(Optional) Customize PostgreSQL:* Place your =postgresql.conf= and =pg_hba.conf= in the =pg_config/= directory.
 
+3. *Start PostgreSQL:* Run =sudo docker compose up --build -d= to start PostgreSQL and automated backups.
+
 ** Accessing the Database
 
 *** Accessing from Host (CLI)
