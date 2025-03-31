@@ -1,5 +1,3 @@
-#+title: PostgreSQL with Automated Encrypted Backups
-
 * PostgreSQL with Automated Encrypted Backups
 
 Sets up PostgreSQL with automated, encrypted backups to remote storage using Rclone and Age.
