@@ -1,0 +1,29 @@
+# .env file
+# Rename it to .env before running docker
+
+# --- PostgreSQL Credentials ---
+# Default superuser and password. CHANGE THE PASSWORD!
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_very_strong_superuser_password
+
+# --- Backup Configuration ---
+# Base64 encoded content of your rclone.conf file
+# Run: cat ~/.config/rclone/rclone.conf | base64 -w0
+RCLONE_CONFIG_BASE64=PASTE_YOUR_BASE64_ENCODED_RCLONE_CONFIG_HERE
+
+# Your AGE public key for encryption
+AGE_PUBLIC_KEY=PASTE_YOUR_AGE_PUBLIC_KEY_HERE
+
+# Rclone remote path (e.g., mydrive:database_backups/postgres)
+REMOTE_PATH=your_rclone_remote:path/to/all_db_backups
+
+# How many days to keep the SQL dumps on the rclone remote
+SQL_BACKUP_RETAIN_DAYS=30
+
+# --- Telegram Notifications (Optional) ---
+TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE
+TELEGRAM_CHAT_ID=PASTE_YOUR_TELEGRAM_CHAT_ID_HERE
+
+# --- General Settings ---
+# Timezone for the container and cron job (e.g., Asia/Shanghai, UTC, America/New_York)
+TZ=Asia/Shanghai
