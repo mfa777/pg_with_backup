@@ -1,7 +1,7 @@
 services:
-  pg_with_backup:
+  database:
     build: .
-    container_name: pg_with_backup
+    container_name: postgres-backup  # Using kebab-case is more standard in Docker
     restart: always
     # Environment variables are now loaded from the .env file
     environment:
@@ -14,26 +14,13 @@ services:
       TZ: ${TZ}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      SQL_BACKUP_RETAIN_DAYS: ${SQL_BACKUP_RETAIN_DAYS:-7}  # Added with default
     volumes:
       # Data volume
       - pg_data:/var/lib/postgresql/data
       # Config file mounts
       - ./pg_config/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./pg_config/pg_hba.conf:/etc/postgresql/pg_hba.conf
-
-    # --- Port Exposure (Choose ONE based on your security needs) ---
-    # Option 1: No port exposed (Recommended if only other Docker containers need access)
-    # ports: # No ports section
-
-    # Option 2: Expose only to localhost (Docker host)
-    # ports:
-    #   - "127.0.0.1:5432:5432"
-
-    # Option 3: Expose to all interfaces (Requires firewall rules or careful pg_hba.conf)
-    # ports:
-    #  - "5432:5432"
-    # --- End Port Exposure Options ---
-
     networks:
       # Ensure postgres is on the shared network
       - pg_network
@@ -41,37 +28,24 @@ services:
   adminer:
     image: wodby/adminer:latest
     restart: always
+    container_name: postgres-adminer  # Added consistent naming
     ports:
       # Keep Adminer port exposed so YOU can access it from your browser
       - "127.0.0.1:8080:9000"
     environment:
       ADMINER_DEFAULT_DB_DRIVER: pgsql
-      ADMINER_DEFAULT_DB_HOST: pg_with_backup
+      ADMINER_DEFAULT_DB_HOST: postgres-backup  # Updated to match database container name
     depends_on:
-      - pg_with_backup
+      - database
     networks:
       # Ensure adminer is on the same network as postgres
       - pg_network
 
-  # --- Example: Another application container's docker-compose.yaml ---
-  #services:
-  #  my_app:
-  #    image: your_app_image
-  #    restart: always
-  #    environment:
-  #      # Configure your app to connect to 'postgres' host on port 5432
-  #      DATABASE_URL: "postgresql://app_user:app_password@postgres:5432/app_database"
-  #    networks:
-  #      - shared_net
-  #networks:
-  #  shared_net:
-  #    external: true
-  #    name: pg_shared_network
-
 volumes:
   pg_data:
+    name: postgres-backup-data  # Named volume for clarity
 
 networks:
   pg_network:
     driver: bridge
-    name: pg_shared_network
+    name: postgres-network  # More standard naming

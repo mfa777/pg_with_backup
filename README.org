@@ -15,31 +15,13 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 ** Quick Setup
 
-1. *Create .env file:* Create a file named =.env= in the project root with the following (replace placeholders):
-
-#+begin_src sh
-   # --- PostgreSQL ---
-   POSTGRES_USER=your_db_user
-   POSTGRES_PASSWORD=your_strong_password
-   POSTGRES_DB=your_initial_db
-
-   # --- Backup ---
-   # Generate with: cat ~/.config/rclone/rclone.conf | base64 -w 0
-   RCLONE_CONFIG_BASE64="PASTE_YOUR_BASE64_ENCODED_RCLONE_CONFIG_HERE"
-   # Your Age public key (starts with 'age1...')
-   AGE_PUBLIC_KEY="age1..."
-   # Rclone remote path (e.g., "my_remote:my_postgres_backups")
-   REMOTE_PATH="your_rclone_remote:path/to/backups"
-   # Optional: Container timezone (e.g., "UTC", "America/New_York")
-   TZ=UTC
-   # Optional: Telegram notifications
-   # TELEGRAM_BOT_TOKEN="YOUR_TELEGRAM_BOT_TOKEN"
-   # TELEGRAM_CHAT_ID="YOUR_TELEGRAM_CHAT_ID"
-#+end_src
+1. *Create .env file:* Modify =env_sample= in the project root and save it as =.env=.
 
 2. *(Optional) Customize PostgreSQL:* Place your =postgresql.conf= and =pg_hba.conf= in the =pg_config/= directory.
 
 3. *Start PostgreSQL:* Run =sudo docker compose up --build -d= to start PostgreSQL and automated backups.
+
+4. *(Optional) Test Backup:* Run =sudo docker compose exec database /etc/script/backup.sh= to test the backup process.
 
 ** Accessing the Database
 
@@ -75,7 +57,7 @@ If you have another application running in a Docker container and want it to con
   networks:
     shared_net:
       external: true
-      name: pg_shared_network # use the same network as the PostgreSQL container
+      name: postgres_network # use the same network as the PostgreSQL container
 #+end_src
 
 ** Logs
