@@ -17,11 +17,9 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 1. *Create .env file:* Modify =env_sample= in the project root and save it as =.env=.
 
-2. *(Optional) Customize PostgreSQL:* Place your =postgresql.conf= and =pg_hba.conf= in the =pg_config/= directory.
+2. *Start PostgreSQL:* Run =sudo docker compose up --build -d= to start PostgreSQL and automated backups.
 
-3. *Start PostgreSQL:* Run =sudo docker compose up --build -d= to start PostgreSQL and automated backups.
-
-4. *(Optional) Test Backup:* Run =sudo docker compose exec database /etc/script/backup.sh= to test the backup process.
+3. *(Optional) Test Backup:* Run =sudo docker compose logs backup -f= to check the backup process.
 
 ** Accessing the Database
 
@@ -59,14 +57,6 @@ If you have another application running in a Docker container and want it to con
       external: true
       name: postgres_network # use the same network as the PostgreSQL container
 #+end_src
-
-** Logs
-
-- View PostgreSQL and backup logs:
-#+begin_src sh
-  sudo docker-compose logs -f pg_with_backup
-#+end_src
-
 
 ** Restore
 
