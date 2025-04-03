@@ -1,41 +1,42 @@
 services:
-  database:
-    build: .
-    container_name: postgres-backup  # Using kebab-case is more standard in Docker
-    restart: always
-    env_file: .env
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
     environment:
-      POSTGRES_INITDB_ARGS: "-c config_file=/etc/postgresql/postgresql.conf"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      # Data volume
       - pg_data:/var/lib/postgresql/data
-      # Config file mounts
-      - ./pg_config/postgresql.conf:/etc/postgresql/postgresql.conf
-      - ./pg_config/pg_hba.conf:/etc/postgresql/pg_hba.conf
-      - ./pg_backup_cron:/etc/cron.d/pg_backup_cron
     networks:
-      # Ensure postgres is on the shared network
+      - pg_network
+
+  backup:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - postgres
+    networks:
       - pg_network
 
   adminer:
     image: wodby/adminer:latest
     restart: always
-    container_name: postgres-adminer  # Added consistent naming
     ports:
       # Keep Adminer port exposed so YOU can access it from your browser
       - "127.0.0.1:8080:9000"
     environment:
       ADMINER_DEFAULT_DB_DRIVER: pgsql
-      ADMINER_DEFAULT_DB_HOST: postgres-backup  # Updated to match database container name
+      ADMINER_DEFAULT_DB_HOST: postgres  # Updated to match database container name
     depends_on:
-      - database
+      - postgres
     networks:
-      # Ensure adminer is on the same network as postgres
+      # Ensure adminer is on the same network with postgres
       - pg_network
 
 volumes:
   pg_data:
-    name: postgres-backup-data  # Named volume for clarity
+    name: postgres-data  # Named volume for clarity
 
 networks:
   pg_network:

@@ -3,13 +3,17 @@ set -eo pipefail # Exit on error, treat unset variables as errors, pipe failures
 
 # --- Configuration (Should match environment variables) ---
 PGUSER="${POSTGRES_USER:-postgres}"
-PGHOST="localhost" # Connect via socket or localhost within the container
+PGHOST="${PGHOST:-postgres}" # Connect to the postgres container
 PGPORT="${POSTGRES_PORT:-5432}"
 BACKUP_DIR="/tmp/backups"
 STATE_DIR="/var/lib/postgresql/data/backup_state" # Directory within the persistent volume
 LAST_HASH_FILE="${STATE_DIR}/last_backup.hash"
 KEEP_DAYS=${SQL_BACKUP_RETAIN_DAYS:-7} # How many days of backups to keep remotely, default to 7
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# --- Add timestamp to all subsequent output ---
+# Redirect stdout and stderr through awk to prepend timestamp
+exec > >(awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0; fflush(); }') 2>&1
 
 # --- Ensure state directory exists ---
 mkdir -p "$STATE_DIR"
@@ -23,11 +27,11 @@ TELEGRAM_MESSAGE_PREFIX="${TELEGRAM_MESSAGE_PREFIX}"
 
 send_telegram_message() {
   if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
-    local message="[PostgresBackup] $1"
+      local message="\\[${TELEGRAM_MESSAGE_PREFIX}\\] $1"
     # Use timeout to prevent script hanging
     timeout 10s curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
       -d chat_id="${TELEGRAM_CHAT_ID}" \
-      -d text="[${TELEGRAM_MESSAGE_PREFIX}] ${message}" \
+      -d text="${message}" \
       -d parse_mode="Markdown" || echo "Telegram notification failed."
   fi
 }
@@ -48,6 +52,15 @@ for var in "${required_vars[@]}"; do
   if [[ -z "${!var}" ]]; then
     echo "Error: $var environment variable is not set."
     send_telegram_message "ERROR: $var is not set. Backup failed."
+    exit 1
+  fi
+done
+
+# --- Check for required commands ---
+for cmd in pg_dumpall age rclone base64; do
+    if ! command -v $cmd &> /dev/null; then
+    echo "Error: Required command '$cmd' not found."
+    send_telegram_message "ERROR: Required command '$cmd' not found. Backup failed."
     exit 1
   fi
 done

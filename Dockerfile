@@ -1,71 +1,36 @@
-# Use an official PostgreSQL image (choose a specific version, e.g., 17)
-# FROM postgres:17
-# lobechat require pgvector
-FROM pgvector/pgvector:pg17
+FROM alpine:3.21
 
-# Install necessary tools: cron, curl, unzip (for rclone install), gnupg, ca-certificates, tzdata
-# Also clean up apt cache afterwards
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cron \
+# Set environment variables
+ENV TZ=UTC
+ENV BACKUP_CRON_SCHEDULE="0 2 * * *"
+
+# Install required packages
+RUN apk add --no-cache \
+    bash \
+    postgresql17-client \
     curl \
-    unzip \
-    gnupg \
-    ca-certificates \
+    rclone \
+    age \
     tzdata \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates && \
+    rm -rf /var/cache/apk/*
 
-# Install rclone using the official script
-RUN curl https://rclone.org/install.sh | bash
+# Create directories
+RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log
 
-# Install age (downloading from GitHub Releases)
-# Note: Check for the latest age version URL if needed
-ARG AGE_VERSION=v1.1.1
-RUN curl -L "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz" | tar xz \
-    && mv age/age /usr/local/bin/age \
-    && mv age/age-keygen /usr/local/bin/age-keygen \
-    && rm -rf age \
-    && age --version
+# Copy backup script
+COPY backup.sh /usr/local/bin/backup.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /usr/local/bin/backup.sh /entrypoint.sh
 
-# Set the timezone (e.g., Asia/Shanghai for GMT+8)
-# This value can be overridden by the TZ environment variable in docker-compose.yml
-ENV TZ=Asia/Shanghai
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+# --- Setup Cron (will be finalized by entrypoint) ---
+# Add a placeholder or default cron job definition
+# The entrypoint script will overwrite this using the BACKUP_CRON_SCHEDULE env var
+RUN echo "${BACKUP_CRON_SCHEDULE} /usr/local/bin/backup.sh > /proc/1/fd/1 2>/proc/1/fd/2" | crontab -
 
-# Create rclone configuration directory (config will be mounted here or passed via env var)
-# Note: The actual rclone.conf is expected to be provided at runtime,
-# either via volume mount to /config/rclone/rclone.conf or via RCLONE_CONFIG_BASE64 env var.
-RUN mkdir -p /config/rclone
+# --- Runtime ---
+# Run the entrypoint script which sets timezone and starts crond
+ENTRYPOINT ["/entrypoint.sh"]
 
-# Create directory for backup scripts and copy the script
-COPY backup.sh /etc/scripts/backup.sh
-RUN chmod 700 /etc/scripts/backup.sh
-
-# Copy the cron job file
-COPY pg_backup_cron /etc/cron.d/pg_backup_cron
-# Give the cron job file the correct permissions
-RUN chmod 0644 /etc/cron.d/pg_backup_cron
-# Note: Cron logs are typically redirected to the container's stdout/stderr, viewable with 'docker logs'
-
-
-# Modify the entrypoint: start cron first, then execute the default postgres entrypoint
-# Create a new entrypoint script
-COPY <<EOF /usr/local/bin/docker-entrypoint-cron.sh
-#!/bin/bash
-set -e
-
-# Start the cron daemon in the foreground (output will be redirected)
-# Using "-f" keeps it running; "&" puts it in the background immediately
-cron -f &
-
-# Execute the original postgres entrypoint script, passing all arguments
-exec /usr/local/bin/docker-entrypoint.sh "\$@"
-EOF
-
-# Make the new entrypoint script executable
-RUN chmod +x /usr/local/bin/docker-entrypoint-cron.sh
-
-# Use the new entrypoint
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint-cron.sh"]
-# Set the default command (passed to the entrypoint)
-CMD ["postgres"]
+# Start cron in the foreground
+CMD ["crond", "-f", "-l", "8"]

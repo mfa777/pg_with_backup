@@ -28,3 +28,6 @@ TELEGRAM_MESSAGE_PREFIX=Database
 # --- General Settings ---
 # Timezone for the container and cron job (e.g., Asia/Shanghai, UTC, America/New_York)
 TZ=Asia/Shanghai
+
+# --- CRON Settings ---
+BACKUP_CRON_SCHEDULE="* 2 * * *"
