@@ -1,8 +1,7 @@
 # Cron job for PostgreSQL backup
 # Run daily at 5:00 AM (GMT+8, handled by container timezone)
 
-# Important: Use 'postgres' user to run the script for permissions
 # Redirect stdout and stderr to Docker's log collector (process 1)
-0 5 * * * postgres /etc/scripts/backup.sh >> /proc/1/fd/1 2>> /proc/1/fd/2
+0 5 * * * root /etc/scripts/backup.sh >> /proc/1/fd/1 2>> /proc/1/fd/2
 
 # An empty line is required at the end of the file for cron

@@ -23,6 +23,7 @@ SQL_BACKUP_RETAIN_DAYS=30
 # --- Telegram Notifications (Optional) ---
 TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE
 TELEGRAM_CHAT_ID=PASTE_YOUR_TELEGRAM_CHAT_ID_HERE
+TELEGRAM_MESSAGE_PREFIX=Database
 
 # --- General Settings ---
 # Timezone for the container and cron job (e.g., Asia/Shanghai, UTC, America/New_York)

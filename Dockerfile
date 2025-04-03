@@ -39,8 +39,7 @@ RUN mkdir -p /config/rclone
 
 # Create directory for backup scripts and copy the script
 COPY backup.sh /etc/scripts/backup.sh
-RUN chown postgres:postgres /etc/scripts/backup.sh && \
-    chmod 700 /etc/scripts/backup.sh
+RUN chmod 700 /etc/scripts/backup.sh
 
 # Copy the cron job file
 COPY pg_backup_cron /etc/cron.d/pg_backup_cron

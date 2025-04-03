@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 set -eo pipefail # Exit on error, treat unset variables as errors, pipe failures
 
 # --- Configuration (Should match environment variables) ---
@@ -19,6 +19,7 @@ mkdir -p "$STATE_DIR"
 # --- Telegram Notifications (Only for failures) ---
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN}"
 TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID}"
+TELEGRAM_MESSAGE_PREFIX="${TELEGRAM_MESSAGE_PREFIX}"
 
 send_telegram_message() {
   if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
@@ -26,7 +27,7 @@ send_telegram_message() {
     # Use timeout to prevent script hanging
     timeout 10s curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
       -d chat_id="${TELEGRAM_CHAT_ID}" \
-      -d text="${message}" \
+      -d text="[${TELEGRAM_MESSAGE_PREFIX}] ${message}" \
       -d parse_mode="Markdown" || echo "Telegram notification failed."
   fi
 }
