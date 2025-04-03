@@ -1,8 +1,0 @@
-# Cron job for PostgreSQL backup
-# Run daily at 5:00 AM (GMT+8, handled by container timezone)
-
-# Add env and redirect stdout and stderr to Docker's log collector (process 1)
-BASH_ENV=/root/.profile
-0 5 * * * root /etc/scripts/backup.sh >> /proc/1/fd/1 2>> /proc/1/fd/2
-
-# An empty line is required at the end of the file for cron

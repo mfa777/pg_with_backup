@@ -49,7 +49,7 @@ If you have another application running in a Docker container and want it to con
       image: your_app_image
       restart: always
       environment:
-        DATABASE_URL: "postgresql://postgres_user:password@pg_with_backup:5432/app_database"
+        DATABASE_URL: "postgresql://pg_user:pg_password@postgres:5432/app_database"
       networks:
         - shared_net
   networks:
