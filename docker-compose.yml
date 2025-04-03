@@ -3,24 +3,16 @@ services:
     build: .
     container_name: postgres-backup  # Using kebab-case is more standard in Docker
     restart: always
-    # Environment variables are now loaded from the .env file
+    env_file: .env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: "-c config_file=/etc/postgresql/postgresql.conf"
-      RCLONE_CONFIG_BASE64: ${RCLONE_CONFIG_BASE64}
-      AGE_PUBLIC_KEY: ${AGE_PUBLIC_KEY}
-      REMOTE_PATH: ${REMOTE_PATH}
-      TZ: ${TZ}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
-      SQL_BACKUP_RETAIN_DAYS: ${SQL_BACKUP_RETAIN_DAYS:-7}  # Added with default
     volumes:
       # Data volume
       - pg_data:/var/lib/postgresql/data
       # Config file mounts
       - ./pg_config/postgresql.conf:/etc/postgresql/postgresql.conf
       - ./pg_config/pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - ./pg_backup_cron:/etc/cron.d/pg_backup_cron
     networks:
       # Ensure postgres is on the shared network
       - pg_network
