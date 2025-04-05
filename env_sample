@@ -30,4 +30,4 @@ TELEGRAM_MESSAGE_PREFIX=Database
 TZ=Asia/Shanghai
 
 # --- CRON Settings ---
-BACKUP_CRON_SCHEDULE="* 2 * * *"
+BACKUP_CRON_SCHEDULE="0 2 * * *"
