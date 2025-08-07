@@ -30,4 +30,5 @@ TELEGRAM_MESSAGE_PREFIX=Database
 TZ=Asia/Shanghai
 
 # --- CRON Settings ---
+# Script will be executed every day at 2:00 AM
 BACKUP_CRON_SCHEDULE="0 2 * * *"
