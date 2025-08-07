@@ -49,7 +49,7 @@ TELEGRAM_MESSAGE_PREFIX="${TELEGRAM_MESSAGE_PREFIX}"
 
 send_telegram_message() {
   if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
-      local message="\\[${TELEGRAM_MESSAGE_PREFIX}\\] $1"
+      local message="\[${TELEGRAM_MESSAGE_PREFIX}\] $1"
     # Use timeout to prevent script hanging
     timeout 10s curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
       -d chat_id="${TELEGRAM_CHAT_ID}" \
@@ -149,27 +149,25 @@ if ! echo "$RCLONE_CONFIG_BASE64" | base64 -d > "$RCLONE_CONFIG_DIR/rclone.conf"
 fi
 RCLONE_CONFIG_OPT="--config $RCLONE_CONFIG_DIR/rclone.conf"
 
-# --- Upload to remote ---
-echo "Uploading $ENC_FILE to $REMOTE_PATH..."
-if ! rclone copy "$ENC_FILE" "$REMOTE_PATH/" $RCLONE_CONFIG_OPT --progress; then
-  echo "Error: Rclone upload failed."
-  send_telegram_message "ERROR: Rclone upload failed."
-  exit 1
+# --- Upload to remote and cleanup old backups only if upload successful ---
+if rclone copy "$ENC_FILE" "$REMOTE_PATH/" $RCLONE_CONFIG_OPT --progress; then
+  echo "Upload complete."
+
+  # --- Cleanup old backups ---
+  echo "Cleaning up remote backups older than $KEEP_DAYS days..."
+  if ! rclone delete "$REMOTE_PATH/" --min-age "${KEEP_DAYS}d" $RCLONE_CONFIG_OPT --progress; then
+    echo "Warning: Remote cleanup failed, but backup was successful."
+  fi
+  echo "Remote cleanup complete."
+else
+  echo "Upload failed, skip deleting old backups."
 fi
 
 rm -f "$ENC_FILE" # Remove encrypted file after successful upload
-echo "Upload complete."
 
 # --- Update last hash ---
 echo "$CURRENT_HASH" > "$LAST_HASH_FILE"
 echo "Updated last backup hash."
-
-# --- Cleanup old backups ---
-echo "Cleaning up remote backups older than $KEEP_DAYS days..."
-if ! rclone delete "$REMOTE_PATH/" --min-age "${KEEP_DAYS}d" $RCLONE_CONFIG_OPT --progress; then
-  echo "Warning: Remote cleanup failed, but backup was successful."
-fi
-echo "Remote cleanup complete."
 
 echo "Backup process finished successfully."
 
