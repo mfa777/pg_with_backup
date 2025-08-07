@@ -55,7 +55,7 @@ If you have another application running in a Docker container and want it to con
   networks:
     shared_net:
       external: true
-      name: postgres_network # use the same network as the PostgreSQL container
+      name: postgres-network # use the same network as the PostgreSQL container
 #+end_src
 
 ** Restore
