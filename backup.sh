@@ -49,7 +49,7 @@ TELEGRAM_MESSAGE_PREFIX="${TELEGRAM_MESSAGE_PREFIX}"
 
 send_telegram_message() {
   if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
-      local message="\[${TELEGRAM_MESSAGE_PREFIX}\] $1"
+    local message="[${TELEGRAM_MESSAGE_PREFIX}] $1"
     # Use timeout to prevent script hanging
     timeout 10s curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
       -d chat_id="${TELEGRAM_CHAT_ID}" \
@@ -161,6 +161,7 @@ if rclone copy "$ENC_FILE" "$REMOTE_PATH/" $RCLONE_CONFIG_OPT --progress; then
   echo "Remote cleanup complete."
 else
   echo "Upload failed, skip deleting old backups."
+  send_telegram_message "ERROR: Rclone upload failed. Backup aborted."
 fi
 
 rm -f "$ENC_FILE" # Remove encrypted file after successful upload
