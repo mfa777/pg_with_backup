@@ -1,6 +1,28 @@
 #!/bin/bash -l
 set -eo pipefail # Exit on error, treat unset variables as errors, pipe failures
 
+###############################################################################
+# PostgreSQL Docker Compose Backup Script
+#
+# This script automates secure backups for a PostgreSQL database running 
+# inside Docker Compose. It performs the following main tasks:
+#
+# 1. Dumps all PostgreSQL databases using pg_dumpall, compresses them, and
+#    checks if the dump differs from the last backup (to avoid redundant uploads).
+# 2. Encrypts the compressed SQL dump using age and a provided public key.
+# 3. Uploads the encrypted backup to a remote location using rclone, with
+#    configuration supplied via a base64-encoded environment variable.
+# 4. Retains only a configurable number of days' worth of backups on the remote.
+# 5. Sends Telegram notifications in case of errors or failures.
+# 6. Cleans up all temporary files and ensures safe state management.
+#
+# All critical settings (database credentials, remote details, retention policy,
+# Telegram, rclone config, etc.) are handled via environment variables for
+# easy Docker Compose integration.
+#
+# Usage: Intended to be run inside a Docker container with necessary env vars.
+###############################################################################
+
 # --- Configuration (Should match environment variables) ---
 PGUSER="${POSTGRES_USER:-postgres}"
 PGHOST="${PGHOST:-postgres}" # Connect to the postgres container
