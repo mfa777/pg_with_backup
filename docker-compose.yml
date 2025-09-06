@@ -20,31 +20,30 @@ services:
     networks:
       - pg_network
 
-  cloudbeaver:
-    image: dbeaver/cloudbeaver:latest
+  pgadmin:
+    image: dpage/pgadmin4:latest
     restart: always
     ports:
-      # Keep CloudBeaver port exposed so YOU can access it from your browser
-      - "127.0.0.1:8080:8978"
+      # Keep pgAdmin port exposed so YOU can access it from your browser
+      - "127.0.0.1:8080:80"
     volumes:
-      # Persist CloudBeaver workspace and configuration
-      - cloudbeaver_data:/opt/cloudbeaver/workspace
-      # Mount pre-configuration files for automatic setup
-      - ./cloudbeaver_init/cloudbeaver.conf:/opt/cloudbeaver/conf/cloudbeaver.conf:ro
+      # Persist pgAdmin data and configuration
+      - pgadmin_data:/var/lib/pgadmin
     environment:
-      - CB_ADMIN_NAME=${CB_ADMIN_NAME:-admin}
-      - CB_ADMIN_PASSWORD=${CB_ADMIN_PASSWORD:-admin}
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-admin}
+      - PGADMIN_DISABLE_POSTFIX=true
     depends_on:
       - postgres
     networks:
-      # Ensure cloudbeaver is on the same network with postgres
+      # Ensure pgAdmin is on the same network with postgres
       - pg_network
 
 volumes:
   pg_data:
     name: postgres-data  # Named volume for clarity
-  cloudbeaver_data:
-    name: cloudbeaver-data  # Named volume for CloudBeaver workspace
+  pgadmin_data:
+    name: pgadmin-data  # Named volume for pgAdmin data
 
 networks:
   pg_network:
