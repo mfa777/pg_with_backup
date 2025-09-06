@@ -29,6 +29,12 @@ services:
     volumes:
       # Persist CloudBeaver workspace and configuration
       - cloudbeaver_data:/opt/cloudbeaver/workspace
+      # Mount pre-configuration files for automatic setup
+      - ./cloudbeaver_init/:/opt/cloudbeaver/workspace/.CloudBeaver_init:ro
+    environment:
+      - CB_ADMIN_NAME=${CB_ADMIN_NAME:-admin}
+      - CB_ADMIN_PASSWORD=${CB_ADMIN_PASSWORD:-admin}
+      - CB_SERVER_CONFIG_FILE=/opt/cloudbeaver/workspace/.CloudBeaver_init/cloudbeaver.conf
     depends_on:
       - postgres
     networks:
