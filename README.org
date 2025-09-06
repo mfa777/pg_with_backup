@@ -32,11 +32,11 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
   psql -h localhost -p 5432 -U your_db_user -d your_initial_db
 #+end_src
 
-*** Accessing from Host (CloudBeaver)
+*** Accessing from Host (pgAdmin)
 
-CloudBeaver is a web-based database management tool with a modern interface. You can access it through your browser.
+pgAdmin is a web-based database administration tool with a modern interface. You can access it through your browser.
 
-*Open CloudBeaver:* Navigate to =http://localhost:8080= in your web browser.
+*Open pgAdmin:* Navigate to =http://localhost:8080= in your web browser.
 
 *** Accessing from Another Container (Shared Network)
 
