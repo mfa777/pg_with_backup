@@ -24,24 +24,26 @@ services:
     image: dbeaver/cloudbeaver:latest
     restart: always
     ports:
-      # Keep CloudBeaver port exposed so YOU can access it from your browser
       - "127.0.0.1:8080:8978"
     volumes:
-      # Persist CloudBeaver workspace and configuration
       - cloudbeaver_data:/opt/cloudbeaver/workspace
+      - ./cloudbeaver_init/:/opt/cloudbeaver/workspace/.CloudBeaver_init:ro
+    environment:
+      - CB_ADMIN_NAME=${CB_ADMIN_NAME:-admin}
+      - CB_ADMIN_PASSWORD=${CB_ADMIN_PASSWORD:-admin}
+      - CB_SERVER_CONFIG_FILE=/opt/cloudbeaver/workspace/.CloudBeaver_init/cloudbeaver.conf
     depends_on:
       - postgres
     networks:
-      # Ensure cloudbeaver is on the same network with postgres
       - pg_network
 
 volumes:
   pg_data:
-    name: postgres-data  # Named volume for clarity
+    name: postgres-data
   cloudbeaver_data:
-    name: cloudbeaver-data  # Named volume for CloudBeaver workspace
+    name: cloudbeaver-data
 
 networks:
   pg_network:
     driver: bridge
-    name: postgres-network  # More standard naming
+    name: postgres-network
