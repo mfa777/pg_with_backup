@@ -4,7 +4,7 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
 
 ** Features
 
-- PostgreSQL Database (with pg_vector extension)
+- PostgreSQL Database (version 17 with pg_vector extension)
 - Automated daily backups (configurable)
 - Client-side encryption via Age
 - Uploads via Rclone to configured remote storage
@@ -32,11 +32,11 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage using Rcl
   psql -h localhost -p 5432 -U your_db_user -d your_initial_db
 #+end_src
 
-*** Accessing from Host (Adminer)
+*** Accessing from Host (CloudBeaver)
 
-Adminer is a lightweight database management tool. You can run it as a separate Docker container.
+CloudBeaver is a web-based database management tool with a modern interface. You can access it through your browser.
 
-*Open Adminer:* Navigate to =http://localhost:8080= in your web browser.
+*Open CloudBeaver:* Navigate to =http://localhost:8080= in your web browser.
 
 *** Accessing from Another Container (Shared Network)
 
