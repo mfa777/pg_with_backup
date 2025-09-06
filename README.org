@@ -38,6 +38,18 @@ CloudBeaver is a web-based database management tool with a modern interface. You
 
 *Open CloudBeaver:* Navigate to =http://localhost:8080= in your web browser.
 
+*Initial Setup:* On first visit, complete the setup wizard with these credentials:
+- Username: =cbadmin=
+- Password: =CloudBeaver1=
+
+*Connect to PostgreSQL:* After setup, create a new PostgreSQL connection using:
+- Host: =postgres= 
+- Port: =5432=
+- Database: =postgres=
+- Username/Password: Use values from your =.env= file
+
+See =setup-cloudbeaver.md= for detailed setup instructions with screenshots.
+
 *** Accessing from Another Container (Shared Network)
 
 If you have another application running in a Docker container and want it to connect to this PostgreSQL database, ensure both containers are on the same Docker network.

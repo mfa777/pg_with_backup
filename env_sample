@@ -35,4 +35,7 @@ BACKUP_CRON_SCHEDULE="0 2 * * *"
 
 # --- CloudBeaver Settings ---
 # CloudBeaver (database administration tool) runs on port 8080
-# No additional environment variables required - configure via web interface
+# On first run, complete the setup wizard with these credentials:
+#   Username: cbadmin  
+#   Password: CloudBeaver1
+# After setup, you can create PostgreSQL connections using the POSTGRES_USER and POSTGRES_PASSWORD above
