@@ -32,3 +32,7 @@ TZ=Asia/Shanghai
 # --- CRON Settings ---
 # Script will be executed every day at 2:00 AM
 BACKUP_CRON_SCHEDULE="0 2 * * *"
+
+# --- CloudBeaver Settings ---
+# CloudBeaver (database administration tool) runs on port 8080
+# No additional environment variables required - configure via web interface
