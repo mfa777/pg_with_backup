@@ -1,0 +1,212 @@
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+This user must also own the server process.
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /var/lib/postgresql/data ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default "max_connections" ... 100
+selecting default "shared_buffers" ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+initdb: warning: enabling "trust" authentication for local connections
+initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+syncing data to disk ... ok
+
+
+Success. You can now start the database server using:
+
+    pg_ctl -D /var/lib/postgresql/data -l logfile start
+
+waiting for server to start....2025-09-12 14:26:52.164 UTC [53] LOG:  starting PostgreSQL 17.6 (Debian 17.6-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2025-09-12 14:26:52.166 UTC [53] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-09-12 14:26:52.171 UTC [56] LOG:  database system was shut down at 2025-09-12 14:26:51 UTC
+2025-09-12 14:26:52.176 UTC [53] LOG:  database system is ready to accept connections
+ done
+server started
+
+/usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+
+2025-09-12 14:26:52.358 UTC [53] LOG:  received fast shutdown request
+waiting for server to shut down....2025-09-12 14:26:52.361 UTC [53] LOG:  aborting any active transactions
+2025-09-12 14:26:52.364 UTC [53] LOG:  background worker "logical replication launcher" (PID 59) exited with exit code 1
+2025-09-12 14:26:52.365 UTC [54] LOG:  shutting down
+2025-09-12 14:26:52.366 UTC [54] LOG:  checkpoint starting: shutdown immediate
+2025-09-12 14:26:52.372 UTC [54] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.002 s, sync=0.001 s, total=0.007 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/14ED7B8, redo lsn=0/14ED7B8
+2025-09-12 14:26:52.376 UTC [53] LOG:  database system is shut down
+ done
+server stopped
+
+PostgreSQL init process complete; ready for start up.
+
+2025-09-12 14:26:52.481 UTC [1] LOG:  starting PostgreSQL 17.6 (Debian 17.6-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2025-09-12 14:26:52.481 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-09-12 14:26:52.481 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-09-12 14:26:52.484 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-09-12 14:26:52.489 UTC [67] LOG:  database system was shut down at 2025-09-12 14:26:52 UTC
+2025-09-12 14:26:52.494 UTC [1] LOG:  database system is ready to accept connections
+2025-09-12 14:26:53.692 UTC [102] ERROR:  syntax error at or near "NOT" at character 20
+2025-09-12 14:26:53.692 UTC [102] STATEMENT:  CREATE DATABASE IF NOT EXISTS test_ci;
+2025-09-12 14:26:53.787 UTC [109] FATAL:  database "test_ci" does not exist
+2025-09-12 14:27:11.372 UTC [140] ERROR:  syntax error at or near "NOT" at character 20
+2025-09-12 14:27:11.372 UTC [140] STATEMENT:  CREATE DATABASE IF NOT EXISTS test_ci;
+2025-09-12 14:27:11.489 UTC [147] FATAL:  database "test_ci" does not exist
+2025-09-12 14:27:35.878 UTC [155] FATAL:  database "test_ci" does not exist
+2025-09-12 14:28:33.232 UTC [65] LOG:  checkpoint starting: wal
+2025-09-12 14:28:59.309 UTC [65] LOG:  checkpoint complete: wrote 1025 buffers (6.3%); 0 WAL file(s) added, 0 removed, 33 recycled; write=25.781 s, sync=0.032 s, total=26.077 s; sync files=317, longest=0.003 s, average=0.001 s; distance=535626 kB, estimate=535626 kB; lsn=0/3D000060, redo lsn=0/22000028
+2025-09-12 14:33:33.407 UTC [65] LOG:  checkpoint starting: time
+2025-09-12 14:33:39.955 UTC [65] LOG:  checkpoint complete: wrote 66 buffers (0.4%); 0 WAL file(s) added, 0 removed, 27 recycled; write=6.513 s, sync=0.007 s, total=6.549 s; sync files=12, longest=0.004 s, average=0.001 s; distance=442519 kB, estimate=526315 kB; lsn=0/3D025D60, redo lsn=0/3D025CD0
+2025-09-12 14:50:23.957 UTC [65] LOG:  checkpoint starting: wal
+2025-09-12 14:50:30.096 UTC [65] LOG:  checkpoint complete: wrote 61 buffers (0.4%); 0 WAL file(s) added, 0 removed, 33 recycled; write=6.017 s, sync=0.082 s, total=6.139 s; sync files=21, longest=0.069 s, average=0.004 s; distance=540520 kB, estimate=540520 kB; lsn=0/6C000060, redo lsn=0/5E000028

@@ -1,0 +1,5 @@
+Timezone set to UTC
+Configuring SQL backup mode
+Setting up SQL backup mode with schedule: 0 2 * * *
+Starting cron daemon...
+0 2 * * * /usr/local/bin/backup.sh > /proc/1/fd/1 2>/proc/1/fd/2

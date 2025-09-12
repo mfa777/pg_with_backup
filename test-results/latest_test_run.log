@@ -1,0 +1,559 @@
++ set -euo pipefail
++++ dirname /workspaces/pg_with_backup/setupTests
+++ cd /workspaces/pg_with_backup
+++ pwd
++ REPO_DIR=/workspaces/pg_with_backup
++ ENV_FILE=/workspaces/pg_with_backup/.env
++ COMPOSE_CMD='docker compose'
++ POSTGRES_SERVICE_NAME=postgres
++ BACKUP_SERVICE_NAME=backup
++ PG_DATA_PATH=/var/lib/postgresql/data
++ WAL_PATHS=("$PG_DATA_PATH/pg_wal" "$PG_DATA_PATH/pg_xlog")
++ WAIT_TIMEOUT=120
++ BATCHES=60
++ BATCH_SIZE=100
++ CLEANUP=0
++ [[ -f /workspaces/pg_with_backup/.env ]]
++ set -o allexport
++ source /workspaces/pg_with_backup/.env
++ set +o allexport
++ POSTGRES_USER=postgres
++ POSTGRES_DB=postgres
++ BACKUP_MODE=sql
++ echof '== Prerequisite checks =='
++ printf '%s\n' '== Prerequisite checks =='
+== Prerequisite checks ==
++ require_exec docker
++ command -v docker
++ docker compose version
++ pass 'docker + docker compose available'
++ echof 'PASS: docker + docker compose available'
++ printf '%s\n' 'PASS: docker + docker compose available'
+PASS: docker + docker compose available
++ echof '== Starting docker compose stack =='
++ printf '%s\n' '== Starting docker compose stack =='
+== Starting docker compose stack ==
++ docker compose up --build -d
+#1 [internal] load local bake definitions
+#1 reading from stdin 663B done
+#1 DONE 0.0s
+
+#2 [backup internal] load build definition from Dockerfile.backup
+#2 transferring dockerfile: 1.60kB done
+#2 DONE 0.0s
+
+#3 [postgres internal] load build definition from Dockerfile.postgres-walg
+#3 transferring dockerfile: 1.75kB done
+#3 DONE 0.0s
+
+#4 [backup internal] load metadata for docker.io/library/alpine:3.21
+#4 DONE 0.0s
+
+#5 [backup internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [postgres internal] load metadata for docker.io/library/postgres:17
+#6 ...
+
+#7 [backup  1/11] FROM docker.io/library/alpine:3.21
+#7 DONE 0.0s
+
+#8 [backup internal] load build context
+#8 transferring context: 11.83kB done
+#8 DONE 0.0s
+
+#9 [backup  2/11] RUN apk add --no-cache     bash     postgresql17-client     curl     rclone     age     tzdata     ca-certificates     lz4     openssh-client &&     rm -rf /var/cache/apk/*
+#9 CACHED
+
+#10 [backup  4/11] RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log     && mkdir -p /opt/walg/scripts
+#10 CACHED
+
+#11 [backup  5/11] COPY backup.sh /usr/local/bin/backup.sh
+#11 CACHED
+
+#12 [backup  3/11] RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg-ubuntu-20.04-amd64.tar.gz     && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin     && chmod +x /usr/local/bin/wal-g     && rm /tmp/wal-g.tar.gz     || echo "Warning: wal-g download failed, but continuing for SQL mode compatibility"
+#12 CACHED
+
+#13 [backup  6/11] COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+#13 CACHED
+
+#14 [backup  7/11] COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+#14 DONE 0.0s
+
+#15 [backup  8/11] COPY entrypoint-backup.sh /entrypoint.sh
+#15 DONE 0.0s
+
+#16 [backup  9/11] COPY scripts/mock-wal-g /usr/local/bin/wal-g
+#16 DONE 0.0s
+
+#17 [backup 10/11] RUN chmod +x /usr/local/bin/wal-g || true
+#17 DONE 0.2s
+
+#6 [postgres internal] load metadata for docker.io/library/postgres:17
+#6 ...
+
+#18 [backup 11/11] RUN chmod +x /usr/local/bin/backup.sh /opt/walg/scripts/*.sh /entrypoint.sh
+#18 DONE 0.3s
+
+#19 [backup] exporting to image
+#19 exporting layers
+#19 ...
+
+#6 [postgres internal] load metadata for docker.io/library/postgres:17
+#6 DONE 0.9s
+
+#5 [postgres internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#20 [postgres  1/11] FROM docker.io/library/postgres:17@sha256:feff5b24fedd610975a1f5e743c51a4b360437f4dc3a11acf740dcd708f413f6
+#20 DONE 0.0s
+
+#21 [postgres internal] load build context
+#21 transferring context: 3.83kB 0.1s done
+#21 DONE 0.1s
+
+#22 [postgres  3/11] RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg-ubuntu-20.04-amd64.tar.gz     && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin || true     && if [ -f /usr/local/bin/wal-g ]; then chmod +x /usr/local/bin/wal-g; else find /usr/local/bin -type f -name 'wal-g*' -exec chmod +x {} ; || true; fi     && rm /tmp/wal-g.tar.gz
+#22 CACHED
+
+#23 [postgres  4/11] RUN mkdir -p /opt/walg/scripts     && mkdir -p /etc/postgresql     && mkdir -p /var/lib/postgresql/.ssh     && chown -R postgres:postgres /var/lib/postgresql/.ssh     && chmod 700 /var/lib/postgresql/.ssh
+#23 CACHED
+
+#24 [postgres  5/11] COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template
+#24 CACHED
+
+#25 [postgres  2/11] RUN apt-get update && apt-get install -y     curl     ca-certificates     lz4     brotli     zstd     openssh-client     procps     wget     gnupg     && rm -rf /var/lib/apt/lists/*
+#25 CACHED
+
+#26 [postgres  6/11] COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+#26 CACHED
+
+#27 [postgres  7/11] COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+#27 DONE 0.2s
+
+#19 [backup] exporting to image
+#19 ...
+
+#28 [postgres  8/11] COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
+#28 DONE 0.0s
+
+#29 [postgres  9/11] COPY scripts/mock-wal-g /usr/local/bin/wal-g
+#29 DONE 0.1s
+
+#30 [postgres 10/11] RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+#30 ...
+
+#19 [backup] exporting to image
+#19 exporting layers 1.2s done
+#19 writing image sha256:686aad5f560e828ca87666f5b2ada7efcaa0bd8e41a0fcb8eb35450d1d399f42 done
+#19 naming to docker.io/library/pg_with_backup-backup done
+#19 DONE 1.2s
+
+#31 [backup] resolving provenance for metadata file
+#31 DONE 0.0s
+
+#30 [postgres 10/11] RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+#30 DONE 0.7s
+
+#32 [postgres 11/11] RUN chmod +x /usr/local/bin/wal-g || true
+#32 DONE 0.6s
+
+#33 [postgres] exporting to image
+#33 exporting layers 2.5s done
+#33 writing image sha256:786db85a7ed551bde7b801638a1c506e0bb30e9e9ff5a983cd0e4e1627942735 done
+#33 naming to docker.io/pgvector/pgvector:pg17
+#33 naming to docker.io/pgvector/pgvector:pg17 done
+#33 DONE 2.5s
+
+#34 [postgres] resolving provenance for metadata file
+#34 DONE 0.0s
+ postgres  Built
+ backup  Built
+ Network postgres-network  Creating
+ Network postgres-network  Created
+ Volume "postgres-data"  Creating
+ Volume "postgres-data"  Created
+ Volume "pgadmin-data"  Creating
+ Volume "pgadmin-data"  Created
+ Container postgres  Creating
+ Container postgres  Created
+ Container pg_with_backup-pgadmin-1  Creating
+ Container pg_with_backup-backup-1  Creating
+ Container pg_with_backup-backup-1  Created
+ Container pg_with_backup-pgadmin-1  Created
+ Container postgres  Starting
+ Container postgres  Started
+ Container pg_with_backup-backup-1  Starting
+ Container pg_with_backup-pgadmin-1  Starting
+ Container pg_with_backup-backup-1  Started
+ Container pg_with_backup-pgadmin-1  Started
++ echof 'Triggered docker compose up'
++ printf '%s\n' 'Triggered docker compose up'
+Triggered docker compose up
++ echof '== Waiting for postgres service container =='
++ printf '%s\n' '== Waiting for postgres service container =='
+== Waiting for postgres service container ==
++ end=126
++ true
++ docker compose ps -q postgres
+++ docker compose ps -q postgres
++ CONTAINER_ID=1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4
++ [[ -n 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 ]]
++ break
++ pass 'postgres container created: 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4'
++ echof 'PASS: postgres container created: 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4'
++ printf '%s\n' 'PASS: postgres container created: 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4'
+PASS: postgres container created: 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4
++ echof '== Waiting for Postgres readiness (pg_isready) =='
++ printf '%s\n' '== Waiting for Postgres readiness (pg_isready) =='
+== Waiting for Postgres readiness (pg_isready) ==
++ end=126
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ sleep 2
++ true
++ docker exec 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4 pg_isready -U postgres
++ ((  SECONDS >= end  ))
++ echof 'Postgres logs (last 100 lines):'
++ printf '%s\n' 'Postgres logs (last 100 lines):'
+Postgres logs (last 100 lines):
++ docker logs --tail 100 1eac101d9596f2c5b2d67e271fcb7b86e1f0f572e58414ae2057624be48978f4
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+Starting PostgreSQL with wal-g support...
+WAL-G mode enabled - preparing environment...
+Validating wal-g environment...
+wal-g environment validation passed
+Preparing SSH key for wal-g...
+Using SSH private key from path: ./secrets/walg_ssh_key/id_rsa
+Key path appears read-only; copying into /var/lib/postgresql/.ssh/walg_key
+Adding backup.example to known_hosts...
+SSH key setup completed
+WAL-G environment prepared successfully
+/usr/local/bin/docker-entrypoint-walg.sh: line 28: /usr/local/bin/wal-g: Permission denied
+wal-g version: 
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+Starting PostgreSQL with wal-g support...
+WAL-G mode enabled - preparing environment...
+Validating wal-g environment...
+wal-g environment validation passed
+Preparing SSH key for wal-g...
+Using SSH private key from path: ./secrets/walg_ssh_key/id_rsa
+Key path appears read-only; copying into /var/lib/postgresql/.ssh/walg_key
+Adding backup.example to known_hosts...
+SSH key setup completed
+WAL-G environment prepared successfully
+/usr/local/bin/docker-entrypoint-walg.sh: line 28: /usr/local/bin/wal-g: Permission denied
+wal-g version: 
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+WAL-G mode enabled - preparing environment...
+Validating wal-g environment...
+wal-g environment validation passed
+Preparing SSH key for wal-g...
+Using SSH private key from path: ./secrets/walg_ssh_key/id_rsa
+Key path appears read-only; copying into /var/lib/postgresql/.ssh/walg_key
+Adding backup.example to known_hosts...
+SSH key setup completed
+WAL-G environment prepared successfully
+/usr/local/bin/docker-entrypoint-walg.sh: line 28: /usr/local/bin/wal-g: Permission denied
+wal-g version: 
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+WAL-G mode enabled - preparing environment...
+Validating wal-g environment...
+wal-g environment validation passed
+Preparing SSH key for wal-g...
+Using SSH private key from path: ./secrets/walg_ssh_key/id_rsa
+Key path appears read-only; copying into /var/lib/postgresql/.ssh/walg_key
+Adding backup.example to known_hosts...
+SSH key setup completed
+WAL-G environment prepared successfully
+/usr/local/bin/docker-entrypoint-walg.sh: line 28: /usr/local/bin/wal-g: Permission denied
+wal-g version: 
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
++ die 'Timed out waiting for postgres to become ready'
++ echof 'FAIL: Timed out waiting for postgres to become ready'
++ printf '%s\n' 'FAIL: Timed out waiting for postgres to become ready'
+FAIL: Timed out waiting for postgres to become ready
++ exit 1

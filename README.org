@@ -1,25 +1,79 @@
 * PostgreSQL with Automated Encrypted Backups
 
-Sets up PostgreSQL with automated, encrypted backups to remote storage using Rclone and Age.
+Sets up PostgreSQL with automated, encrypted backups to remote storage. Supports two backup modes:
+- **SQL Mode**: Traditional approach using pg_dumpall + Age encryption + Rclone (original)
+- **WAL Mode**: Incremental backups using wal-g + SSH storage + Point-in-Time Recovery
 
 ** Features
 
 - PostgreSQL Database (version 17 with pg_vector extension)
-- Automated daily backups (configurable)
-- Client-side encryption via Age
-- Uploads via Rclone to configured remote storage
-- Only uploads if data has changed
-- Retains backups for a configurable number of days
-- DB can be connected from host or another container
-- Optional: Telegram notifications when backups fail
+- **Dual backup modes**: SQL (default) or WAL-G incremental backups
+- **SQL Mode**: Daily pg_dumpall backups with Age encryption and Rclone upload
+- **WAL Mode**: Continuous WAL archiving + periodic base backups with wal-g over SSH
+- Point-in-Time Recovery (WAL mode only)
+- Automated retention policies
+- Only uploads if data has changed (SQL mode)
+- Delta/incremental backups for large databases (WAL mode)
+- Optional Telegram notifications when backups fail
+- Easy mode switching via helper scripts
 
 ** Quick Setup
 
-1. *Create .env file:* Modify =env_sample= in the project root and save it as =.env=.
+1. *Create .env file:* Copy =env_sample= to =.env= and configure for your backup mode.
 
-2. *Start PostgreSQL:* Run =sudo docker compose up --build -d= to start PostgreSQL and automated backups.
+2. *Choose backup mode:*
+   - For SQL mode (default): =BACKUP_MODE=sql=
+   - For WAL-G mode: =BACKUP_MODE=wal=
 
-3. *(Optional) Test Backup:* Run =sudo docker compose logs backup -f= to check the backup process.
+3. *Start PostgreSQL:* Run =sudo docker compose up --build -d= to start PostgreSQL and automated backups.
+
+4. *(Optional) Test Backup:* Run =sudo docker compose logs backup -f= to check the backup process.
+
+** Backup Mode Comparison
+
+| Feature | SQL Mode | WAL Mode |
+|---------|----------|----------|
+| Backup Type | Full dump daily | Continuous WAL + periodic base |
+| Storage Size | Compressed SQL | Incremental deltas |
+| Recovery Granularity | Daily snapshots | Point-in-time (second-level) |
+| Large DB Performance | Slower (full dump) | Faster (incremental) |
+| Recovery Complexity | Simple restore | More complex PITR |
+| Storage Backend | Rclone (any cloud) | SSH server |
+| Encryption | Age | wal-g built-in or external |
+
+** SQL Mode Setup (Default)
+
+Configure these variables in =.env=:
+#+begin_src bash
+BACKUP_MODE=sql
+RCLONE_CONFIG_BASE64=PASTE_YOUR_BASE64_ENCODED_RCLONE_CONFIG_HERE
+AGE_PUBLIC_KEY=PASTE_YOUR_AGE_PUBLIC_KEY_HERE
+REMOTE_PATH=your_rclone_remote:path/to/backups
+#+end_src
+
+** WAL-G Mode Setup
+
+1. *Switch to WAL mode:* Run =./scripts/switch-to-wal.sh= or manually set:
+   #+begin_src bash
+   BACKUP_MODE=wal
+   POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
+   BACKUP_VOLUME_MODE=ro
+   #+end_src
+
+2. *Configure SSH storage:* Set up a backup server and configure:
+   #+begin_src bash
+   WALG_SSH_PREFIX=ssh://walg@backup-host:22/var/backups/pg/prod
+   WALG_SSH_PRIVATE_KEY=PASTE_YOUR_BASE64_ENCODED_SSH_PRIVATE_KEY_HERE
+   # OR use file-based key:
+   # SSH_KEY_PATH=./secrets/walg_ssh_key
+   #+end_src
+
+3. *Configure retention:*
+   #+begin_src bash
+   WALG_RETENTION_FULL=7          # Keep 7 full backups
+   WALG_BASEBACKUP_CRON="30 1 * * *"  # Daily base backup at 1:30 AM
+   WALG_CLEAN_CRON="15 3 * * *"       # Cleanup at 3:15 AM
+   #+end_src
 
 ** Accessing the Database
 
@@ -58,9 +112,143 @@ If you have another application running in a Docker container and want it to con
       name: postgres-network # use the same network as the PostgreSQL container
 #+end_src
 
-** Restore
+** Restore Procedures
+
+*** SQL Mode Restore
 
 1. Download the =.sql.gz.age= backup file from your Rclone remote.
 2. Decrypt: =age -d -i /path/to/private.key backup.sql.gz.age > backup.sql.gz=
 3. Unzip: =gunzip backup.sql.gz=
 4. Restore: =psql -h localhost -U your_db_user -d your_target_db < backup.sql=
+
+*** WAL Mode Restore (Point-in-Time Recovery)
+
+1. *Stop the current PostgreSQL container:*
+   #+begin_src bash
+   docker compose stop postgres
+   #+end_src
+
+2. *Create a restore container:*
+   #+begin_src bash
+   # Build the wal-g enabled PostgreSQL image first
+   docker build -f Dockerfile.postgres-walg -t postgres-walg .
+   
+   # Create restore container with same environment and volumes
+   docker run --rm -it \
+     --env-file .env \
+     -v pg_data:/var/lib/postgresql/data \
+     -v ./secrets/walg_ssh_key:/secrets/walg_ssh_key:ro \
+     postgres-walg bash
+   #+end_src
+
+3. *Inside the restore container, perform PITR:*
+   #+begin_src bash
+   # Clear the data directory
+   rm -rf /var/lib/postgresql/data/*
+   
+   # Fetch the latest base backup
+   wal-g backup-fetch /var/lib/postgresql/data LATEST
+   
+   # Create recovery configuration for specific time
+   cat > /var/lib/postgresql/data/postgresql.conf << EOF
+   restore_command = 'wal-g wal-fetch %f %p'
+   recovery_target_time = '2025-01-15 14:30:00+00'
+   recovery_target_action = 'promote'
+   EOF
+   
+   # Start recovery
+   postgres --single -D /var/lib/postgresql/data postgres
+   #+end_src
+
+4. *Restart normal operations:*
+   #+begin_src bash
+   docker compose up -d postgres
+   #+end_src
+
+** Mode Switching
+
+*** Switch to WAL-G Mode
+#+begin_src bash
+./scripts/switch-to-wal.sh
+docker compose down
+docker compose up --build -d
+#+end_src
+
+*** Switch to SQL Mode  
+#+begin_src bash
+./scripts/switch-to-sql.sh
+docker compose down
+docker compose up --build -d
+#+end_src
+
+** Monitoring and Troubleshooting
+
+*** Check Backup Status
+#+begin_src bash
+# For both modes
+docker compose logs backup -f
+
+# WAL mode specific: check last base backup status
+docker exec postgres cat /var/lib/postgresql/data/walg_basebackup.last
+
+# WAL mode: list available backups
+docker exec postgres wal-g backup-list
+#+end_src
+
+*** WAL-G Specific Commands
+#+begin_src bash
+# Manual base backup
+docker exec backup /opt/walg/scripts/wal-g-runner.sh backup
+
+# Manual cleanup
+docker exec backup /opt/walg/scripts/wal-g-runner.sh clean
+
+# Check wal-g version and config
+docker exec postgres wal-g --version
+#+end_src
+
+** Testing
+
+A comprehensive test suite is available to validate the PostgreSQL backup stack functionality.
+
+*** Running Tests
+
+Execute the test script:
+#+begin_src bash
+./setupTests
+#+end_src
+
+Or with automatic cleanup:
+#+begin_src bash
+CLEANUP=1 ./setupTests
+#+end_src
+
+*** Validation Only
+
+To validate the test setup without running containers:
+#+begin_src bash
+./validate_tests.sh
+#+end_src
+
+*** Test Coverage
+
+The test suite validates:
+- Container creation and startup
+- PostgreSQL readiness and connectivity
+- WAL file generation and monitoring
+- Backup service functionality
+- Mode-specific features (SQL vs WAL backup modes)
+
+See =test_README.org= for detailed test documentation.
+
+** Environment Variables Reference
+
+See =env_sample= for a complete list of configuration options for both modes.
+
+** Security Considerations
+
+- Always use strong passwords for =POSTGRES_PASSWORD=
+- For WAL mode: Restrict SSH key access to backup directory only
+- For SQL mode: Secure your Age private key and Rclone configuration
+- Consider network isolation for backup communications
+- Regularly test restore procedures

@@ -1,12 +1,22 @@
 # .env file
 # Rename it to .env before running docker
 
+# --- Global Mode Switch ---
+# Choose backup mode: sql (current mechanism) or wal (wal-g incremental)
+BACKUP_MODE=sql
+
+# For wal mode, you need to set these Docker Compose overrides:
+# POSTGRES_IMAGE=  (leave empty to build custom)
+# POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
+# BACKUP_VOLUME_MODE=ro  (for wal mode, backup container only reads)
+
 # --- PostgreSQL Credentials ---
 # Default superuser and password. CHANGE THE PASSWORD!
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_very_strong_superuser_password
 
-# --- Backup Configuration ---
+# --- SQL Mode Backup Configuration (legacy) ---
+# These are used when BACKUP_MODE=sql
 # Base64 encoded content of your rclone.conf file
 # Run: cat ~/.config/rclone/rclone.conf | base64 -w0
 RCLONE_CONFIG_BASE64=PASTE_YOUR_BASE64_ENCODED_RCLONE_CONFIG_HERE
@@ -19,6 +29,43 @@ REMOTE_PATH=your_rclone_remote:path/to/all_db_backups
 
 # How many days to keep the SQL dumps on the rclone remote
 SQL_BACKUP_RETAIN_DAYS=30
+
+# --- WAL Mode Configuration (wal-g over SSH) ---
+# These are used when BACKUP_MODE=wal
+# SSH remote path for wal-g (e.g., ssh://walg@backup-host:22/var/backups/pg/prod)
+WALG_SSH_PREFIX=ssh://walg@your-backup-host:22/absolute/path/to/backup/directory
+
+# SSH private key for authentication (base64 encoded)
+# Run: cat ~/.ssh/id_walg | base64 -w0
+WALG_SSH_PRIVATE_KEY=PASTE_YOUR_BASE64_ENCODED_SSH_PRIVATE_KEY_HERE
+
+# Alternative: Path to SSH private key file (will be mounted as volume)
+WALG_SSH_PRIVATE_KEY_PATH=/secrets/walg_ssh_key
+SSH_KEY_PATH=./secrets/walg_ssh_key
+
+# wal-g compression method
+WALG_COMPRESSION_METHOD=lz4
+
+# Maximum delta backup steps (incremental chain length)
+WALG_DELTA_MAX_STEPS=7
+
+# Delta backup origin
+WALG_DELTA_ORIGIN=LATEST
+
+# Log level for wal-g
+WALG_LOG_LEVEL=INFO
+
+# Retention policy: number of full backups to keep
+WALG_RETENTION_FULL=7
+
+# Retention policy: days to keep (alternative/additional)
+WALG_RETENTION_DAYS=30
+
+# Cron schedule for base backups (when BACKUP_MODE=wal)
+WALG_BASEBACKUP_CRON="30 1 * * *"
+
+# Cron schedule for cleanup (when BACKUP_MODE=wal)
+WALG_CLEAN_CRON="15 3 * * *"
 
 # --- Telegram Notifications (Optional) ---
 TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE
