@@ -1,0 +1,30 @@
+# PostgreSQL configuration template for wal-g mode
+# This will be copied to PGDATA/postgresql.conf if it doesn't exist
+
+# Connection settings
+listen_addresses = '*'
+port = 5432
+max_connections = 100
+
+# Memory settings (adjust based on your needs)
+shared_buffers = 256MB
+effective_cache_size = 1GB
+work_mem = 4MB
+
+# WAL settings for wal-g
+wal_level = replica
+archive_mode = on
+archive_command = 'wal-g wal-push %p'
+archive_timeout = 60s
+wal_compression = on
+max_wal_size = 2GB
+min_wal_size = 512MB
+
+# Logging
+log_checkpoints = on
+log_min_duration_statement = 500ms
+log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+
+# Other useful settings
+hot_standby = on
+max_wal_senders = 3

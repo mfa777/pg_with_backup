@@ -1,0 +1,47 @@
+FROM alpine:3.21
+
+# Set environment variables
+ENV TZ=UTC
+ENV BACKUP_CRON_SCHEDULE="0 2 * * *"
+ENV BACKUP_MODE=sql
+
+# Install required packages for both SQL and WAL modes
+RUN apk add --no-cache \
+    bash \
+    postgresql17-client \
+    curl \
+    rclone \
+    age \
+    tzdata \
+    ca-certificates \
+    lz4 \
+    brotli \
+    zstd \
+    openssh-client \
+    flock \
+    procps && \
+    rm -rf /var/cache/apk/*
+
+# Download and install wal-g
+ARG WALG_VERSION=v2.0.1
+RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz \
+    && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin \
+    && chmod +x /usr/local/bin/wal-g \
+    && rm /tmp/wal-g.tar.gz
+
+# Create directories
+RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log \
+    && mkdir -p /opt/walg/scripts
+
+# Copy scripts
+COPY backup.sh /usr/local/bin/backup.sh
+COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+COPY entrypoint-backup.sh /entrypoint.sh
+
+# Make scripts executable
+RUN chmod +x /usr/local/bin/backup.sh /opt/walg/scripts/*.sh /entrypoint.sh
+
+# --- Runtime ---
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["crond", "-f", "-l", "8"]

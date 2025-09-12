@@ -1,20 +1,41 @@
 services:
   postgres:
-    image: pgvector/pgvector:pg17
+    # Use wal-g enhanced image when BACKUP_MODE=wal, otherwise use standard image
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg17}
+    build:
+      context: .
+      dockerfile: ${POSTGRES_DOCKERFILE:-}
     container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_MODE: ${BACKUP_MODE:-sql}
+      # wal-g environment variables (only used when BACKUP_MODE=wal)
+      WALG_SSH_PREFIX: ${WALG_SSH_PREFIX:-}
+      WALG_SSH_PRIVATE_KEY: ${WALG_SSH_PRIVATE_KEY:-}
+      WALG_SSH_PRIVATE_KEY_PATH: ${WALG_SSH_PRIVATE_KEY_PATH:-}
+      WALG_COMPRESSION_METHOD: ${WALG_COMPRESSION_METHOD:-lz4}
+      WALG_DELTA_MAX_STEPS: ${WALG_DELTA_MAX_STEPS:-7}
+      WALG_DELTA_ORIGIN: ${WALG_DELTA_ORIGIN:-LATEST}
+      WALG_LOG_LEVEL: ${WALG_LOG_LEVEL:-INFO}
     volumes:
       - pg_data:/var/lib/postgresql/data
+      # Conditionally mount SSH key (create empty file if not exists)
+      - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
     networks:
       - pg_network
 
   backup:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
     restart: unless-stopped
     env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data:${BACKUP_VOLUME_MODE:-rw}
+      # Mount SSH key for wal-g mode
+      - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
     depends_on:
       - postgres
     networks:
