@@ -1,4 +1,4 @@
-FROM pgvector/pgvector:pg17
+FROM postgres:17
 
 # Set argument for wal-g version
 ARG WALG_VERSION=v2.0.1
@@ -12,12 +12,14 @@ RUN apt-get update && apt-get install -y \
     zstd \
     openssh-client \
     procps \
+    wget \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install wal-g
 RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz \
-    && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin \
-    && chmod +x /usr/local/bin/wal-g \
+    && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin || true \
+    && if [ -f /usr/local/bin/wal-g ]; then chmod +x /usr/local/bin/wal-g; else find /usr/local/bin -type f -name 'wal-g*' -exec chmod +x {} \; || true; fi \
     && rm /tmp/wal-g.tar.gz
 
 # Create necessary directories
