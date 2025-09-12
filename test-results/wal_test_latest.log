@@ -1,0 +1,627 @@
+== Prerequisite checks ==
+PASS: docker + docker compose available
+== FORCE_EMPTY_PGDATA=1: removing postgres-data volume and any previous compose state
+ Container pg_with_backup-pgadmin-1  Stopping
+ Container pg_with_backup-backup-1  Stopping
+ Container pg_with_backup-backup-1  Stopped
+ Container pg_with_backup-backup-1  Removing
+ Container pg_with_backup-backup-1  Removed
+ Container pg_with_backup-pgadmin-1  Stopped
+ Container pg_with_backup-pgadmin-1  Removing
+ Container pg_with_backup-pgadmin-1  Removed
+ Container postgres  Stopping
+ Container postgres  Stopped
+ Container postgres  Removing
+ Container postgres  Removed
+ Volume postgres-data  Removing
+ Volume pgadmin-data  Removing
+ Network postgres-network  Removing
+ Volume postgres-data  Removed
+ Volume pgadmin-data  Removed
+ Network postgres-network  Removed
+SKIP: postgres-data volume not present
+== Preparing an empty postgres-data volume to avoid image population
+total 8
+drwxr-xr-x    2 root     root          4096 Sep 12 16:56 .
+drwxr-xr-x    1 root     root          4096 Sep 12 16:56 ..
+PASS: postgres-data prepared and emptied
+== Starting postgres service only (to avoid race on data volume) ==
+#1 [internal] load local bake definitions
+#1 reading from stdin 381B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile.postgres-walg
+#2 transferring dockerfile: 1.86kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/postgres:17
+#3 DONE 0.7s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [1/9] FROM docker.io/library/postgres:17@sha256:feff5b24fedd610975a1f5e743c51a4b360437f4dc3a11acf740dcd708f413f6
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 274B done
+#6 DONE 0.0s
+
+#7 [6/9] COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+#7 CACHED
+
+#8 [2/9] RUN apt-get update && apt-get install -y     curl     ca-certificates     lz4     brotli     zstd     openssh-client     procps     wget     gnupg     && rm -rf /var/lib/apt/lists/*
+#8 CACHED
+
+#9 [5/9] COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template
+#9 CACHED
+
+#10 [3/9] RUN set -eux;     curl -L -o /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg-ubuntu-20.04-amd64.tar.gz" || true;     tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin || true;     if [ -f /usr/local/bin/wal-g ]; then chmod +x /usr/local/bin/wal-g; else find /usr/local/bin -type f -name 'wal-g*' -exec chmod +x {} ; || true; fi;     if [ ! -x /usr/local/bin/wal-g ]; then       EX=$(find /usr/local/bin -maxdepth 1 -type f -name 'wal-g*' -print -quit || true);       if [ -n "$EX" ]; then ln -sf "$EX" /usr/local/bin/wal-g && chmod +x /usr/local/bin/wal-g; fi;     fi;     rm -f /tmp/wal-g.tar.gz
+#10 CACHED
+
+#11 [4/9] RUN mkdir -p /opt/walg/scripts     && mkdir -p /etc/postgresql     && mkdir -p /var/lib/postgresql/.ssh     && chown -R postgres:postgres /var/lib/postgresql/.ssh     && chmod 700 /var/lib/postgresql/.ssh
+#11 CACHED
+
+#12 [8/9] COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
+#12 CACHED
+
+#13 [7/9] COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+#13 CACHED
+
+#14 [9/9] RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 writing image sha256:d06b17c6271ba28a4bf4a0980ae4ce4fc256d753c9c35fbc4410f51c970e8eb2 done
+#15 naming to docker.io/pgvector/pgvector:pg17 done
+#15 DONE 0.0s
+
+#16 resolving provenance for metadata file
+#16 DONE 0.0s
+ postgres  Built
+ Network postgres-network  Creating
+ Network postgres-network  Created
+time="2025-09-12T16:56:28Z" level=warning msg="volume \"postgres-data\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+ Container postgres  Creating
+ Container postgres  Created
+ Container postgres  Starting
+ Container postgres  Started
+Triggered docker compose up for postgres
+== Waiting for postgres service container ==
+PASS: postgres container created: 740c4a595f4d54b79238b4671a1204131ddba6be74f118770ca7057d005cdb94
+== Waiting for Postgres readiness (pg_isready) ==
+PASS: postgres is accepting connections
+== Starting backup and pgadmin services after postgres readiness
+time="2025-09-12T16:56:31Z" level=warning msg="volume \"postgres-data\" already exists but was not created by Docker Compose. Use `external: true` to use an existing volume"
+ Volume "pgadmin-data"  Creating
+ Volume "pgadmin-data"  Created
+ Container postgres  Running
+ Container pg_with_backup-pgadmin-1  Creating
+ Container pg_with_backup-backup-1  Creating
+ Container pg_with_backup-backup-1  Created
+ Container pg_with_backup-pgadmin-1  Created
+ Container pg_with_backup-pgadmin-1  Starting
+ Container pg_with_backup-backup-1  Starting
+ Container pg_with_backup-backup-1  Started
+ Container pg_with_backup-pgadmin-1  Started
+== Checking backup service container ==
+PASS: backup container exists: fbdce4d82472815ba8a398ae5eb2ca10299169cb2ecc1e25161d86bbfa901c45
+== Determining WAL path inside container ==
+PASS: WAL path detected: /var/lib/postgresql/data/pg_wal
+WAL files before test: 3
+== Creating test database and table ==
+CREATE DATABASE
+CREATE TABLE
+PASS: Created test_ci.test_wal
+== Inserting rows to generate WAL activity ==
+BEGIN
+SELECT 1
+COMMIT
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/1920310
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/2004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/3004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/4004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/5004380
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/6004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/7004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/8004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/9004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/A004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/B004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/C004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/D004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/E004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/F004088
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/10004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/11004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/12004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/13004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/14004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/15004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/16004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/17004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/18004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/19004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/1A004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/1B004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/1C004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/1D004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/1E004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/1F004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/20004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/21004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/22007238
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/23004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/24004088
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/25004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/26004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/27004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/28004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/29004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/2A004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/2B004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/2C004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/2D004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/2E004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/2F004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/30004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/31004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/32004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/33004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/34004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/35004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/36004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/37004088
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/38004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/39004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/3A004050
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/3B004348
+(1 row)
+
+BEGIN
+INSERT 0 100
+COMMIT
+ pg_switch_wal 
+---------------
+ 0/3C004050
+(1 row)
+
+PASS: Inserted 6000 rows in batches (committed per batch)
+WAL files after test: 62
+PASS: WAL files increased from 3 to 62
+== Backup-mode specific checks (BACKUP_MODE=sql) ==
+SKIP: rclone not found in backup container
+SKIP: age not found in backup container
+== Summary ==
+Postgres container: 740c4a595f4d54b79238b4671a1204131ddba6be74f118770ca7057d005cdb94
+Backup container: fbdce4d82472815ba8a398ae5eb2ca10299169cb2ecc1e25161d86bbfa901c45
+WAL files before: 3 after: 62
+Bringing down docker compose stack (cleanup)
+ Container pg_with_backup-pgadmin-1  Stopping
+ Container pg_with_backup-backup-1  Stopping
+ Container pg_with_backup-backup-1  Stopped
+ Container pg_with_backup-backup-1  Removing
+ Container pg_with_backup-backup-1  Removed
+ Container pg_with_backup-pgadmin-1  Stopped
+ Container pg_with_backup-pgadmin-1  Removing
+ Container pg_with_backup-pgadmin-1  Removed
+ Container postgres  Stopping
+ Container postgres  Stopped
+ Container postgres  Removing
+ Container postgres  Removed
+ Network postgres-network  Removing
+ Network postgres-network  Removed
+All tests completed.

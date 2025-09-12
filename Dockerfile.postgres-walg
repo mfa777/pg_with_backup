@@ -17,10 +17,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install wal-g
-RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz \
-    && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin || true \
-    && if [ -f /usr/local/bin/wal-g ]; then chmod +x /usr/local/bin/wal-g; else find /usr/local/bin -type f -name 'wal-g*' -exec chmod +x {} \; || true; fi \
-    && rm /tmp/wal-g.tar.gz
+RUN set -eux; \
+    curl -L -o /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz" || true; \
+    tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin || true; \
+    if [ -f /usr/local/bin/wal-g ]; then chmod +x /usr/local/bin/wal-g; else find /usr/local/bin -type f -name 'wal-g*' -exec chmod +x {} \; || true; fi; \
+    if [ ! -x /usr/local/bin/wal-g ]; then \
+      EX=$(find /usr/local/bin -maxdepth 1 -type f -name 'wal-g*' -print -quit || true); \
+      if [ -n "$EX" ]; then ln -sf "$EX" /usr/local/bin/wal-g && chmod +x /usr/local/bin/wal-g; fi; \
+    fi; \
+    rm -f /tmp/wal-g.tar.gz
 
 # Create necessary directories
 RUN mkdir -p /opt/walg/scripts \
