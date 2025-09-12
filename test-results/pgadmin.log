@@ -1,0 +1,31 @@
+email config is {'CHECK_EMAIL_DELIVERABILITY': False, 'ALLOW_SPECIAL_EMAIL_DOMAINS': [], 'GLOBALLY_DELIVERABLE': True}
+/venv/lib/python3.12/site-packages/passlib/pwd.py:16: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+NOTE: Configuring authentication for SERVER mode.
+
+pgAdmin 4 - Application Initialisation
+======================================
+
+/venv/lib/python3.12/site-packages/passlib/pwd.py:16: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+/venv/lib/python3.12/site-packages/passlib/pwd.py:16: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+[2025-09-12 14:24:32 +0000] [1] [INFO] Starting gunicorn 23.0.0
+[2025-09-12 14:24:32 +0000] [1] [INFO] Listening at: http://[::]:80 (1)
+[2025-09-12 14:24:32 +0000] [1] [INFO] Using worker: gthread
+[2025-09-12 14:24:32 +0000] [50] [INFO] Booting worker with pid: 50
+112.206.76.71 - - [12/Sep/2025:14:24:39 +0000] "GET / HTTP/1.1" 302 213 "https://symmetrical-robot-j47j57x4q63gp4.github.dev/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:39 +0000] "GET /login?next=/ HTTP/1.1" 200 2496 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:39 +0000] "GET /static/js/generated/style.css?ver=90800 HTTP/1.1" 200 91300 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:39 +0000] "GET /static/js/generated/vendor.react.js?ver=90800 HTTP/1.1" 200 115854 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:39 +0000] "GET /static/vendor/require/require.min.js?ver=90800 HTTP/1.1" 200 7190 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:39 +0000] "GET /static/js/generated/vendor.main.js?ver=90800 HTTP/1.1" 200 323009 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:40 +0000] "GET /static/js/generated/vendor.sqleditor.js?ver=90800 HTTP/1.1" 200 167052 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:40 +0000] "GET /static/js/generated/vendor.others.js?ver=90800 HTTP/1.1" 200 2350105 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:40 +0000] "GET /static/js/generated/pgadmin_commons.js?ver=90800 HTTP/1.1" 200 5544 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:40 +0000] "GET /favicon.ico?ver=90800 HTTP/1.1" 302 245 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:41 +0000] "GET /static/favicon.ico?ver=90800 HTTP/1.1" 200 0 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:41 +0000] "GET /static/js/generated/security.pages.js?ver=90800 HTTP/1.1" 200 133832 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:41 +0000] "GET /browser/js/endpoints.js?ver=90800 HTTP/1.1" 200 16662 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:41 +0000] "GET /tools/translations.js?ver=90800 HTTP/1.1" 200 321 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/login?next=/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"
+112.206.76.71 - - [12/Sep/2025:14:24:41 +0000] "GET /static/js/generated/fonts/Roboto-Regular..ttf HTTP/1.1" 200 0 "https://symmetrical-robot-j47j57x4q63gp4-8080.app.github.dev/static/js/generated/style.css?ver=90800" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0"

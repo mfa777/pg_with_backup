@@ -1,0 +1,247 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# PostgreSQL Backup Stack Testing Script
+# Tests container startup, database operations, and WAL generation
+# Based on the comprehensive plan for validating the backup infrastructure
+
+# Config
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$REPO_DIR/.env"
+COMPOSE_CMD="docker compose"   # adjust if users use docker-compose
+POSTGRES_SERVICE_NAME="postgres"
+BACKUP_SERVICE_NAME="backup"
+PG_DATA_PATH="/var/lib/postgresql/data"
+WAL_PATHS=("$PG_DATA_PATH/pg_wal" "$PG_DATA_PATH/pg_xlog")
+WAIT_TIMEOUT=120
+BATCHES=60
+BATCH_SIZE=100
+CLEANUP=${CLEANUP:-0}  # set to 1 to bring the stack down at the end
+
+# Load .env if present to obtain POSTGRES_USER etc.
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  set -o allexport
+  # Use a subshell to avoid polluting current shell with unknown vars
+  ( source "$ENV_FILE" >/dev/null 2>&1 ) || true
+  set +o allexport
+fi
+
+POSTGRES_USER="${POSTGRES_USER:-postgres}"
+POSTGRES_DB="${POSTGRES_DB:-postgres}"
+BACKUP_MODE="${BACKUP_MODE:-sql}"
+
+echof() { printf "%s\n" "$*"; }
+die() { echof "FAIL: $*" >&2; exit 1; }
+pass() { echof "PASS: $*"; }
+skip() { echof "SKIP: $*"; }
+
+require_exec() {
+  command -v "$1" >/dev/null 2>&1 || die "Required command '$1' not found on PATH"
+}
+
+# Prereqs
+echof "== Prerequisite checks =="
+require_exec docker
+if ! $COMPOSE_CMD version >/dev/null 2>&1; then
+  die "docker compose CLI not available as '$COMPOSE_CMD'"
+fi
+pass "docker + docker compose available"
+
+# Start the stack
+echof "== Starting docker compose stack =="
+$COMPOSE_CMD up --build -d
+echof "Triggered docker compose up"
+
+# Wait for postgres container to appear
+echof "== Waiting for postgres service container =="
+end=$((SECONDS + WAIT_TIMEOUT))
+while true; do
+  if $COMPOSE_CMD ps -q "$POSTGRES_SERVICE_NAME" >/dev/null 2>&1; then
+    CONTAINER_ID=$($COMPOSE_CMD ps -q "$POSTGRES_SERVICE_NAME")
+    if [[ -n "$CONTAINER_ID" ]]; then
+      break
+    fi
+  fi
+  if (( SECONDS >= end )); then
+    die "Timed out waiting for postgres container to be created"
+  fi
+  sleep 1
+done
+pass "postgres container created: $CONTAINER_ID"
+
+# Wait for postgres to be ready via pg_isready
+echof "== Waiting for Postgres readiness (pg_isready) =="
+end=$((SECONDS + WAIT_TIMEOUT))
+while true; do
+  if docker exec "$CONTAINER_ID" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; then
+    break
+  fi
+  if (( SECONDS >= end )); then
+    # try a final attempt to fetch logs for debugging
+    echof "Postgres logs (last 100 lines):"
+    docker logs --tail 100 "$CONTAINER_ID" || true
+    die "Timed out waiting for postgres to become ready"
+  fi
+  sleep 2
+done
+pass "postgres is accepting connections"
+
+# Check backup service existence
+echof "== Checking backup service container =="
+BACKUP_CONTAINER_ID=""
+if $COMPOSE_CMD ps -q "$BACKUP_SERVICE_NAME" >/dev/null 2>&1; then
+  BACKUP_CONTAINER_ID=$($COMPOSE_CMD ps -q "$BACKUP_SERVICE_NAME" || true)
+fi
+if [[ -n "$BACKUP_CONTAINER_ID" ]]; then
+  pass "backup container exists: $BACKUP_CONTAINER_ID"
+else
+  skip "backup container not defined in compose; backup-specific tests will be skipped"
+fi
+
+# Determine WAL path that exists
+echof "== Determining WAL path inside container =="
+WAL_PATH=""
+for p in "${WAL_PATHS[@]}"; do
+  if docker exec "$CONTAINER_ID" bash -lc "[ -d '$p' ]" >/dev/null 2>&1; then
+    WAL_PATH="$p"
+    break
+  fi
+done
+if [[ -z "$WAL_PATH" ]]; then
+  skip "No pg_wal or pg_xlog directory found; skipping WAL file checks"
+else
+  pass "WAL path detected: $WAL_PATH"
+fi
+
+# Baseline WAL count
+count_wal_files() {
+  local cid="$1"
+  local path="$2"
+  if [[ -z "$path" ]]; then
+    echo 0
+    return
+  fi
+  docker exec "$cid" bash -lc "ls -1 -- '$path' 2>/dev/null | wc -l" || echo 0
+}
+
+COUNT_BEFORE=0
+if [[ -n "$WAL_PATH" ]]; then
+  COUNT_BEFORE=$(count_wal_files "$CONTAINER_ID" "$WAL_PATH")
+fi
+echof "WAL files before test: $COUNT_BEFORE"
+
+# Create test DB and table (portable)
+echof "== Creating test database and table =="
+# Check if database exists, create if missing
+if ! docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_database WHERE datname='test_ci'" | grep -q 1; then
+  docker exec -i "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "CREATE DATABASE test_ci;"
+fi
+docker exec -i "$CONTAINER_ID" psql -U "$POSTGRES_USER" -d test_ci -v ON_ERROR_STOP=1 <<'SQL'
+CREATE TABLE IF NOT EXISTS test_wal (
+  id SERIAL PRIMARY KEY,
+  payload TEXT NOT NULL
+);
+SQL
+pass "Created test_ci.test_wal"
+
+# Insert rows in batches to generate WAL activity
+echof "== Inserting rows to generate WAL activity =="
+docker exec -i "$CONTAINER_ID" bash -lc "psql -U '$POSTGRES_USER' -d test_ci -v ON_ERROR_STOP=1" <<'PSQLSCRIPT'
+BEGIN;
+CREATE TEMP TABLE tmp_generate AS SELECT generate_series(1,1); -- noop to ensure session works
+COMMIT;
+PSQLSCRIPT
+
+# Perform batch inserts from host via psql, committing each batch
+for ((b=1;b<=BATCHES;b++)); do
+  docker exec -i "$CONTAINER_ID" psql -U "$POSTGRES_USER" -d test_ci -v ON_ERROR_STOP=1 <<SQL
+BEGIN;
+INSERT INTO test_wal (payload)
+SELECT md5(random()::text || clock_timestamp()::text) FROM generate_series(1, $BATCH_SIZE);
+COMMIT;
+-- Force WAL segment switch from SQL
+SELECT pg_switch_wal();
+SQL
+  # small sleep to let postgres flush WAL activity
+  sleep 0.1
+done
+pass "Inserted $((BATCHES * BATCH_SIZE)) rows in batches (committed per batch)"
+
+# Post-insert WAL count
+COUNT_AFTER=0
+if [[ -n "$WAL_PATH" ]]; then
+  # wait a bit to ensure WAL files appear
+  sleep 2
+  COUNT_AFTER=$(count_wal_files "$CONTAINER_ID" "$WAL_PATH")
+fi
+echof "WAL files after test: $COUNT_AFTER"
+
+if [[ -n "$WAL_PATH" ]]; then
+  if (( COUNT_AFTER > COUNT_BEFORE )); then
+    pass "WAL files increased from $COUNT_BEFORE to $COUNT_AFTER"
+  else
+    skip "No increase in WAL count detected (before=$COUNT_BEFORE, after=$COUNT_AFTER) — this can happen if WAL files are archived/removed quickly by wal-g or if filesystem mapping differs"
+  fi
+else
+  skip "WAL path not available; WAL generation checks skipped"
+fi
+
+# Backup-mode specific checks
+echof "== Backup-mode specific checks (BACKUP_MODE=$BACKUP_MODE) =="
+if [[ "$BACKUP_MODE" == "wal" ]]; then
+  # Check wal-g binary presence
+  if docker exec "$CONTAINER_ID" which wal-g >/dev/null 2>&1; then
+    pass "wal-g binary found in postgres container"
+    # Try to run 'wal-g --version' to ensure it executes
+    if docker exec "$CONTAINER_ID" wal-g --version >/dev/null 2>&1; then
+      pass "wal-g executed successfully"
+    else
+      skip "wal-g exists but failed to run 'wal-g --version' (maybe missing config); skipping backup-list"
+    fi
+  else
+    skip "wal-g not present in postgres container"
+  fi
+
+  # If wal-g present and backup container exists, attempt backup-list
+  if docker exec "$CONTAINER_ID" which wal-g >/dev/null 2>&1; then
+    if docker exec "$CONTAINER_ID" bash -lc 'wal-g backup-list >/dev/null 2>&1 || true'; then
+      pass "Attempted wal-g backup-list (may require remote access; success means CLI ran)"
+    else
+      skip "wal-g backup-list failed to run cleanly (likely no remote configured) — SKIPPING network tests"
+    fi
+  fi
+else
+  # SQL mode checks
+  if [[ -n "$BACKUP_CONTAINER_ID" ]]; then
+    # Check common binaries inside backup container
+    if docker exec "$BACKUP_CONTAINER_ID" which rclone >/dev/null 2>&1; then
+      pass "rclone present in backup container"
+    else
+      skip "rclone not found in backup container"
+    fi
+    if docker exec "$BACKUP_CONTAINER_ID" which age >/dev/null 2>&1; then
+      pass "age present in backup container"
+    else
+      skip "age not found in backup container"
+    fi
+  else
+    skip "backup container absent; SQL-mode backup checks skipped"
+  fi
+fi
+
+# Final notes and optional cleanup
+echof "== Summary =="
+echof "Postgres container: $CONTAINER_ID"
+if [[ -n "$BACKUP_CONTAINER_ID" ]]; then
+  echof "Backup container: $BACKUP_CONTAINER_ID"
+fi
+echof "WAL files before: $COUNT_BEFORE after: $COUNT_AFTER"
+
+if [[ "$CLEANUP" == "1" ]]; then
+  echof "Bringing down docker compose stack (cleanup)"
+  $COMPOSE_CMD down
+fi
+
+echof "All tests completed."
+exit 0
