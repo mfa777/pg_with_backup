@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Wrapper script for backward compatibility
+# Redirects to the new test location
+exec ./test/run-tests.sh "$@"
