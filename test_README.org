@@ -48,6 +48,49 @@ The test script reads configuration from the `.env` file if present, using these
 - `POSTGRES_DB`: Database name (default: postgres)  
 - `BACKUP_MODE`: Backup mode - sql or wal (default: sql)
 
+** Recent changes / gotchas
+
+- FORCE_EMPTY_PGDATA: For CI or repeatable runs the test runner supports
+  `FORCE_EMPTY_PGDATA=1` which will remove and re-create the named `postgres-data`
+  volume before bringing the stack up. This is intentionally opt-in because it is
+  destructive to any existing data in that volume.
+
+- Startup ordering: The test runner now starts the `postgres` service first and
+  waits for it to be ready before bringing up the `backup` (and `pgadmin`) services.
+  This avoids a race where the backup container writes files into `PGDATA` and
+  prevents `initdb` from initializing the cluster.
+
+- Read-only mounted SSH key: When running in `wal` mode the SSH private key is
+  typically mounted read-only from the host. The wal-g preparation script will
+  detect a read-only mount and copy the key into a writable path inside the
+  postgres container (under `/var/lib/postgresql/.ssh`) to allow secure
+  permissions to be set.
+
+- SKIP_SSH_KEYSCAN: For isolated test environments where network access or
+  keyscan is undesirable, set `SKIP_SSH_KEYSCAN=1` in `.env` to skip the
+  `ssh-keyscan` step that adds the remote host to `known_hosts`.
+
+- Logs and artifacts: Test run output and captured logs are saved under the
+  `test-results/` directory (for example: `test-results/wal_test_latest.log`).
+
+** Quick run examples
+
+Below are a couple of copyable examples for running the test runner safely.
+
+- WAL-mode (recommended for WAL/`wal-g` checks). This will clear the named
+  `postgres-data` volume, skip ssh-keyscan (useful in isolated CI), run in WAL
+  mode and clean up afterwards:
+
+#+begin_src bash
+FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 ./setupTests
+#+end_src
+
+- SQL-mode (validate rclone/age backup tooling). No destructive volume clear:
+
+#+begin_src bash
+BACKUP_MODE=sql CLEANUP=1 ./setupTests
+#+end_src
+
 ** Test Implementation
 
 #+BEGIN_SRC bash
