@@ -62,6 +62,14 @@ if [[ "$FORCE_EMPTY_PGDATA" == "1" ]]; then
   fi
 fi
 
+if [[ "$FORCE_EMPTY_PGDATA" == "1" ]]; then
+  echof "== Preparing an empty postgres-data volume to avoid image population"
+  # Create an empty named volume and ensure it's empty by mounting a helper container
+  docker volume create postgres-data >/dev/null 2>&1 || true
+  docker run --rm -v postgres-data:/data alpine:3.21 sh -c "rm -rf /data/* /data/.* 2>/dev/null || true; ls -la /data || true" || true
+  pass "postgres-data prepared and emptied"
+fi
+
 # Start the stack
 echof "== Starting postgres service only (to avoid race on data volume) =="
 # Start postgres first to let initdb initialize the data directory without interference
@@ -109,6 +117,30 @@ pass "postgres is accepting connections"
 if [[ "${START_OTHER_SERVICES_AFTER_POSTGRES:-0}" == "1" ]]; then
   echof "== Starting backup and pgadmin services after postgres readiness"
   $COMPOSE_CMD up -d "$BACKUP_SERVICE_NAME" pgadmin || true
+fi
+
+# It's possible docker compose will recreate the postgres container when bringing up
+# other services (e.g., to inject new mounts or env). Re-fetch the container id to
+# ensure subsequent commands target the current container instance.
+NEW_CONTAINER_ID=$($COMPOSE_CMD ps -q "$POSTGRES_SERVICE_NAME" || true)
+if [[ -n "$NEW_CONTAINER_ID" && "$NEW_CONTAINER_ID" != "$CONTAINER_ID" ]]; then
+  echof "Note: postgres container was recreated by docker compose (old=$CONTAINER_ID new=$NEW_CONTAINER_ID)"
+  CONTAINER_ID="$NEW_CONTAINER_ID"
+  # Wait a short while for the new container to accept connections
+  echof "== Waiting for new Postgres container readiness (post-recreate) =="
+  end=$((SECONDS + 30))
+  while true; do
+    if docker exec "$CONTAINER_ID" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; then
+      break
+    fi
+    if (( SECONDS >= end )); then
+      echof "Postgres logs (last 100 lines):"
+      docker logs --tail 100 "$CONTAINER_ID" || true
+      die "Timed out waiting for recreated postgres to become ready"
+    fi
+    sleep 1
+  done
+  pass "recreated postgres is accepting connections"
 fi
 
 # Check backup service existence

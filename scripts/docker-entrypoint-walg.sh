@@ -12,10 +12,17 @@ if [ "$BACKUP_MODE" = "wal" ]; then
     source /opt/walg/scripts/walg-env-prepare.sh
     
     # Ensure postgresql.conf has the right settings for wal-g
-    if [ ! -f "$PGDATA/postgresql.conf" ] && [ -f "/etc/postgresql/postgresql.conf.template" ]; then
-        echo "Copying postgresql.conf template for wal-g mode..."
-        cp /etc/postgresql/postgresql.conf.template "$PGDATA/postgresql.conf"
-        chown postgres:postgres "$PGDATA/postgresql.conf"
+    # Only copy the template into PGDATA after the database cluster has been
+    # initialized. Copying into PGDATA before initdb runs makes the directory
+    # non-empty and prevents initdb from creating the cluster.
+    if [ -f "$PGDATA/PG_VERSION" ]; then
+        if [ ! -f "$PGDATA/postgresql.conf" ] && [ -f "/etc/postgresql/postgresql.conf.template" ]; then
+            echo "Database already initialized; copying postgresql.conf template for wal-g mode..."
+            cp /etc/postgresql/postgresql.conf.template "$PGDATA/postgresql.conf"
+            chown postgres:postgres "$PGDATA/postgresql.conf"
+        fi
+    else
+        echo "PGDATA not initialized yet; deferring postgresql.conf copy until after initdb"
     fi
     
     echo "WAL-G environment prepared successfully"

@@ -21,8 +21,18 @@ prepare_ssh_key() {
         export WALG_SSH_PRIVATE_KEY_PATH="/var/lib/postgresql/.ssh/walg_key"
     elif [ -n "$WALG_SSH_PRIVATE_KEY_PATH" ] && [ -f "$WALG_SSH_PRIVATE_KEY_PATH" ]; then
         echo "Using SSH private key from path: $WALG_SSH_PRIVATE_KEY_PATH"
-        chmod 600 "$WALG_SSH_PRIVATE_KEY_PATH"
-        chown postgres:postgres "$WALG_SSH_PRIVATE_KEY_PATH"
+        # Attempt to set secure permissions on the mounted key. If the mount is read-only
+        # (common when mounting secrets), chmod/chown will fail — in that case copy the
+        # key into the container's writable .ssh directory and use the copy.
+        if chmod 600 "$WALG_SSH_PRIVATE_KEY_PATH" 2>/dev/null && chown postgres:postgres "$WALG_SSH_PRIVATE_KEY_PATH" 2>/dev/null; then
+            :
+        else
+            echo "Mounted key appears read-only; copying key into container writable location"
+            cp "$WALG_SSH_PRIVATE_KEY_PATH" /var/lib/postgresql/.ssh/walg_key
+            chmod 600 /var/lib/postgresql/.ssh/walg_key
+            chown postgres:postgres /var/lib/postgresql/.ssh/walg_key
+            export WALG_SSH_PRIVATE_KEY_PATH="/var/lib/postgresql/.ssh/walg_key"
+        fi
     else
         echo "Warning: No SSH private key configured for wal-g"
         return 1
@@ -36,9 +46,13 @@ prepare_ssh_key() {
         
         if [ -n "$SSH_HOST" ]; then
             echo "Adding $SSH_HOST to known_hosts..."
-            ssh-keyscan -p "$SSH_PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" >> /var/lib/postgresql/.ssh/known_hosts 2>/dev/null || true
-            chmod 600 /var/lib/postgresql/.ssh/known_hosts
-            chown postgres:postgres /var/lib/postgresql/.ssh/known_hosts
+            if [[ "${SKIP_SSH_KEYSCAN:-0}" == "1" ]]; then
+                echo "SKIP_SSH_KEYSCAN=1: skipping ssh-keyscan"
+            else
+                ssh-keyscan -p "$SSH_PORT" -t rsa,ecdsa,ed25519 "$SSH_HOST" >> /var/lib/postgresql/.ssh/known_hosts 2>/dev/null || true
+                chmod 600 /var/lib/postgresql/.ssh/known_hosts
+                chown postgres:postgres /var/lib/postgresql/.ssh/known_hosts
+            fi
         fi
     fi
     
