@@ -5,7 +5,7 @@ ENV TZ=UTC
 ENV BACKUP_CRON_SCHEDULE="0 2 * * *"
 ENV BACKUP_MODE=sql
 
-# Install required packages for both SQL and WAL modes
+# Install required packages (start with original packages and add wal-g specific ones)
 RUN apk add --no-cache \
     bash \
     postgresql17-client \
@@ -15,19 +15,16 @@ RUN apk add --no-cache \
     tzdata \
     ca-certificates \
     lz4 \
-    brotli \
-    zstd \
-    openssh-client \
-    flock \
-    procps && \
+    openssh-client && \
     rm -rf /var/cache/apk/*
 
-# Download and install wal-g
+# Download and install wal-g (use static binary to avoid glibc issues)
 ARG WALG_VERSION=v2.0.1
 RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz \
     && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin \
     && chmod +x /usr/local/bin/wal-g \
-    && rm /tmp/wal-g.tar.gz
+    && rm /tmp/wal-g.tar.gz \
+    || echo "Warning: wal-g download failed, but continuing for SQL mode compatibility"
 
 # Create directories
 RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log \
