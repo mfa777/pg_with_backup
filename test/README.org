@@ -15,13 +15,13 @@ This file contains comprehensive tests for the PostgreSQL backup stack project. 
 Execute the test script directly:
 
 #+begin_src bash
-./setupTests
+./run-tests.sh
 #+end_src
 
 Or with cleanup enabled (brings down the stack after tests):
 
 #+begin_src bash
-CLEANUP=1 ./setupTests
+CLEANUP=1 ./run-tests.sh
 #+end_src
 
 ** Test Coverage
@@ -71,7 +71,7 @@ The test script reads configuration from the `.env` file if present, using these
   `ssh-keyscan` step that adds the remote host to `known_hosts`.
 
 - Logs and artifacts: Test run output and captured logs are saved under the
-  `test-results/` directory (for example: `test-results/wal_test_latest.log`).
+  `results/` directory (for example: `results/wal_test_latest.log`).
 
 ** Quick run examples
 
@@ -82,13 +82,13 @@ Below are a couple of copyable examples for running the test runner safely.
   mode and clean up afterwards:
 
 #+begin_src bash
-FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 ./setupTests
+FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 ../run-tests.sh
 #+end_src
 
 - SQL-mode (validate rclone/age backup tooling). No destructive volume clear:
 
 #+begin_src bash
-BACKUP_MODE=sql CLEANUP=1 ./setupTests
+BACKUP_MODE=sql CLEANUP=1 ../run-tests.sh
 #+end_src
 
 ** Test Implementation

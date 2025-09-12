@@ -215,19 +215,19 @@ A comprehensive test suite is available to validate the PostgreSQL backup stack 
 
 Execute the test script:
 #+begin_src bash
-./setupTests
+./test/run-tests.sh
 #+end_src
 
 Or with automatic cleanup:
 #+begin_src bash
-CLEANUP=1 ./setupTests
+CLEANUP=1 ./test/run-tests.sh
 #+end_src
 
 *** Validation Only
 
 To validate the test setup without running containers:
 #+begin_src bash
-./validate_tests.sh
+./test/validate-setup.sh
 #+end_src
 
 *** Test Coverage
@@ -239,7 +239,7 @@ The test suite validates:
 - Backup service functionality
 - Mode-specific features (SQL vs WAL backup modes)
 
-See =test_README.org= for detailed test documentation.
+See =test/README.org= for detailed test documentation.
 
 ** Environment Variables Reference
 

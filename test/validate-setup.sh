@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# Quick validation script for setupTests
+# Quick validation script for test setup
 set -euo pipefail
 
-echo "=== Testing setupTests script validation ==="
+echo "=== Testing test setup validation ==="
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 # Test 1: Script syntax
 echo "Test 1: Checking script syntax..."
-if bash -n setupTests; then
-    echo "PASS: setupTests syntax is valid"
+if bash -n test/run-tests.sh; then
+    echo "PASS: test/run-tests.sh syntax is valid"
 else
-    echo "FAIL: setupTests has syntax errors"
+    echo "FAIL: test/run-tests.sh has syntax errors"
     exit 1
 fi
 
 # Test 2: Check if script is executable
 echo "Test 2: Checking script permissions..."
-if [[ -x setupTests ]]; then
-    echo "PASS: setupTests is executable"
+if [[ -x test/run-tests.sh ]]; then
+    echo "PASS: test/run-tests.sh is executable"
 else
-    echo "FAIL: setupTests is not executable"
+    echo "FAIL: test/run-tests.sh is not executable"
     exit 1
 fi
 
@@ -44,14 +44,14 @@ fi
 
 # Test 5: Check test documentation exists
 echo "Test 5: Checking test documentation..."
-if [[ -f test_README.org ]]; then
-    echo "PASS: test_README.org documentation exists"
+if [[ -f test/README.org ]]; then
+    echo "PASS: test/README.org documentation exists"
 else
-    echo "FAIL: test_README.org documentation not found"
+    echo "FAIL: test/README.org documentation not found"
     exit 1
 fi
 
 echo "=== All validation tests passed ==="
 echo ""
-echo "To run the full test suite: ./setupTests"
-echo "To run with cleanup: CLEANUP=1 ./setupTests"
+echo "To run the full test suite: ./test/run-tests.sh"
+echo "To run with cleanup: CLEANUP=1 ./test/run-tests.sh"
