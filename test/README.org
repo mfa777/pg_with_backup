@@ -12,17 +12,13 @@ This file contains comprehensive tests for the PostgreSQL backup stack project. 
 
 ** Usage
 
-Execute the test script directly:
+Execute the test script directly from repository root:
 
-#+begin_src bash
 ./run-tests.sh
-#+end_src
 
 Or with cleanup enabled (brings down the stack after tests):
 
-#+begin_src bash
 CLEANUP=1 ./run-tests.sh
-#+end_src
 
 ** Test Coverage
 
@@ -81,15 +77,13 @@ Below are a couple of copyable examples for running the test runner safely.
   `postgres-data` volume, skip ssh-keyscan (useful in isolated CI), run in WAL
   mode and clean up afterwards:
 
-#+begin_src bash
-FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 ../run-tests.sh
-#+end_src
+Run from repository root (the wrapper will create a local SSH key under secrets/walg_ssh_key if needed):
+
+FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 ./run-tests.sh
 
 - SQL-mode (validate rclone/age backup tooling). No destructive volume clear:
 
-#+begin_src bash
-BACKUP_MODE=sql CLEANUP=1 ../run-tests.sh
-#+end_src
+BACKUP_MODE=sql CLEANUP=1 ./run-tests.sh
 
 ** Test Implementation
 
