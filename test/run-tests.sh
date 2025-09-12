@@ -13,7 +13,9 @@ POSTGRES_SERVICE_NAME="postgres"
 BACKUP_SERVICE_NAME="backup"
 PG_DATA_PATH="/var/lib/postgresql/data"
 WAL_PATHS=("$PG_DATA_PATH/pg_wal" "$PG_DATA_PATH/pg_xlog")
-WAIT_TIMEOUT=120
+# WAIT_TIMEOUT controls how long we wait (in seconds) for postgres to become ready.
+# It can be overridden via the TEST_WAIT_TIMEOUT env var for quicker local runs.
+WAIT_TIMEOUT=${TEST_WAIT_TIMEOUT:-30}
 BATCHES=60
 BATCH_SIZE=100
 CLEANUP=${CLEANUP:-0}  # set to 1 to bring the stack down at the end
@@ -100,6 +102,8 @@ pass "postgres container created: $CONTAINER_ID"
 echof "== Waiting for Postgres readiness (pg_isready) =="
 end=$((SECONDS + WAIT_TIMEOUT))
 while true; do
+  # Note: SECONDS is a special bash variable that contains the number of seconds
+  # since the shell was started. We use it for simple timeout arithmetic.
   if docker exec "$CONTAINER_ID" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; then
     break
   fi
@@ -109,7 +113,8 @@ while true; do
     docker logs --tail 100 "$CONTAINER_ID" || true
     die "Timed out waiting for postgres to become ready"
   fi
-  sleep 2
+  # Poll more frequently to fail fast in CI/local runs
+  sleep 1
 done
 pass "postgres is accepting connections"
 
@@ -128,7 +133,8 @@ if [[ -n "$NEW_CONTAINER_ID" && "$NEW_CONTAINER_ID" != "$CONTAINER_ID" ]]; then
   CONTAINER_ID="$NEW_CONTAINER_ID"
   # Wait a short while for the new container to accept connections
   echof "== Waiting for new Postgres container readiness (post-recreate) =="
-  end=$((SECONDS + 30))
+  # Allow a shorter window for recreated containers to become ready
+  end=$((SECONDS + 10))
   while true; do
     if docker exec "$CONTAINER_ID" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; then
       break
