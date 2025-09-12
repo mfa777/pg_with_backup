@@ -1,4 +1,69 @@
 #!/usr/bin/env bash
-# Wrapper script for backward compatibility
-# Redirects to the new test location
-exec ./test/run-tests.sh "$@"
+# Smart wrapper for running integration tests (keeps backward compatibility)
+# - In BACKUP_MODE=wal it will generate a local SSH key under secrets/walg_ssh_key
+#   so the postgres wal-g setup can proceed in the test container.
+# - It chooses sensible environment flags depending on BACKUP_MODE.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEST_SCRIPT="$SCRIPT_DIR/test/run-tests.sh"
+
+if [[ ! -f "$TEST_SCRIPT" ]]; then
+	echo "Error: test script not found at $TEST_SCRIPT" >&2
+	exit 2
+fi
+
+# Determine mode from environment or .env
+BACKUP_MODE="${BACKUP_MODE:-}"
+if [[ -z "$BACKUP_MODE" && -f "$SCRIPT_DIR/.env" ]]; then
+	# shellcheck disable=SC1090
+	# Source .env into the current shell so exported values (like BACKUP_MODE)
+	# are available to this script. We temporarily enable allexport so simple
+	# KEY=VALUE lines are exported as environment variables.
+	set -o allexport
+	source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true
+	set +o allexport
+	BACKUP_MODE="${BACKUP_MODE:-}"
+fi
+
+run_sql_mode() {
+	echo "Running tests in SQL backup mode..."
+	# keep simple invocation for SQL mode
+	BACKUP_MODE=sql CLEANUP=1 "$TEST_SCRIPT" "$@"
+}
+
+run_wal_mode() {
+	echo "Running tests in WAL (wal-g) backup mode..."
+	# Ensure we have a local SSH key for the test (do not overwrite existing keys)
+	mkdir -p "$SCRIPT_DIR/secrets/walg_ssh_key"
+	if [[ ! -f "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa" ]]; then
+		echo "Generating temporary SSH key for wal-g tests at secrets/walg_ssh_key/id_rsa"
+		ssh-keygen -t rsa -b 2048 -f "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa" -N "" -q
+		chmod 600 "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa"
+		chmod 644 "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa.pub"
+	else
+		echo "Using existing key at secrets/walg_ssh_key/id_rsa"
+	fi
+
+	# Recommended env set: empty pgdata to avoid pre-populated image data, skip network ssh-keyscan to avoid external network, cleanup afterwards
+	FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 "$TEST_SCRIPT" "$@"
+}
+
+case "$BACKUP_MODE" in
+	wal|WAL|Wal)
+		run_wal_mode "$@"
+		;;
+	sql|SQL|Sql)
+		run_sql_mode "$@"
+		;;
+	"")
+		# Default to SQL mode for safety if not specified
+		echo "No BACKUP_MODE detected; defaulting to SQL mode (safer)." >&2
+		run_sql_mode "$@"
+		;;
+	*)
+		echo "Unknown BACKUP_MODE='$BACKUP_MODE' - please set BACKUP_MODE=sql or wal" >&2
+		exit 3
+		;;
+esac
