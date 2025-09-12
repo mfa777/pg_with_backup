@@ -207,6 +207,40 @@ docker exec backup /opt/walg/scripts/wal-g-runner.sh clean
 docker exec postgres wal-g --version
 #+end_src
 
+** Testing
+
+A comprehensive test suite is available to validate the PostgreSQL backup stack functionality.
+
+*** Running Tests
+
+Execute the test script:
+#+begin_src bash
+./setupTests
+#+end_src
+
+Or with automatic cleanup:
+#+begin_src bash
+CLEANUP=1 ./setupTests
+#+end_src
+
+*** Validation Only
+
+To validate the test setup without running containers:
+#+begin_src bash
+./validate_tests.sh
+#+end_src
+
+*** Test Coverage
+
+The test suite validates:
+- Container creation and startup
+- PostgreSQL readiness and connectivity
+- WAL file generation and monitoring
+- Backup service functionality
+- Mode-specific features (SQL vs WAL backup modes)
+
+See =test_README.org= for detailed test documentation.
+
 ** Environment Variables Reference
 
 See =env_sample= for a complete list of configuration options for both modes.
