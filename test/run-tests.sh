@@ -6,7 +6,7 @@ set -euo pipefail
 # Based on the comprehensive plan for validating the backup infrastructure
 
 # Config
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="$REPO_DIR/.env"
 COMPOSE_CMD="docker compose"   # adjust if users use docker-compose
 POSTGRES_SERVICE_NAME="postgres"
