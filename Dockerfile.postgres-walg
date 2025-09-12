@@ -1,0 +1,43 @@
+FROM pgvector/pgvector:pg17
+
+# Set argument for wal-g version
+ARG WALG_VERSION=v2.0.1
+
+# Install required packages for wal-g and SSH
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    lz4 \
+    brotli \
+    zstd \
+    openssh-client \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install wal-g
+RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz \
+    && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin \
+    && chmod +x /usr/local/bin/wal-g \
+    && rm /tmp/wal-g.tar.gz
+
+# Create necessary directories
+RUN mkdir -p /opt/walg/scripts \
+    && mkdir -p /etc/postgresql \
+    && mkdir -p /var/lib/postgresql/.ssh \
+    && chown -R postgres:postgres /var/lib/postgresql/.ssh \
+    && chmod 700 /var/lib/postgresql/.ssh
+
+# Copy PostgreSQL configuration template
+COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template
+
+# Copy wal-g scripts
+COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
+
+# Make scripts executable
+RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+
+# Use our custom entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint-walg.sh"]
+CMD ["postgres"]
