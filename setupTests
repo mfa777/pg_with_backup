@@ -17,6 +17,7 @@ WAIT_TIMEOUT=120
 BATCHES=60
 BATCH_SIZE=100
 CLEANUP=${CLEANUP:-0}  # set to 1 to bring the stack down at the end
+FORCE_EMPTY_PGDATA=${FORCE_EMPTY_PGDATA:-0} # set to 1 to remove postgres-data volume before starting
 
 # Load .env if present to obtain POSTGRES_USER etc.
 if [[ -f "$ENV_FILE" ]]; then
@@ -48,10 +49,27 @@ if ! $COMPOSE_CMD version >/dev/null 2>&1; then
 fi
 pass "docker + docker compose available"
 
+# Optional: forcibly clear the postgres-data named volume before bringing up compose
+if [[ "$FORCE_EMPTY_PGDATA" == "1" ]]; then
+  echof "== FORCE_EMPTY_PGDATA=1: removing postgres-data volume and any previous compose state"
+  # Stop and remove any running compose resources, then remove the named volume
+  $COMPOSE_CMD down -v || true
+  if docker volume ls --format '{{.Name}}' | grep -q '^postgres-data$'; then
+    docker volume rm postgres-data || true
+    pass "postgres-data volume removed"
+  else
+    skip "postgres-data volume not present"
+  fi
+fi
+
 # Start the stack
-echof "== Starting docker compose stack =="
-$COMPOSE_CMD up --build -d
-echof "Triggered docker compose up"
+echof "== Starting postgres service only (to avoid race on data volume) =="
+# Start postgres first to let initdb initialize the data directory without interference
+$COMPOSE_CMD up --build -d "$POSTGRES_SERVICE_NAME"
+echof "Triggered docker compose up for postgres"
+
+# After postgres is initialized and accepting connections we'll start the remaining services
+START_OTHER_SERVICES_AFTER_POSTGRES=1
 
 # Wait for postgres container to appear
 echof "== Waiting for postgres service container =="
@@ -86,6 +104,12 @@ while true; do
   sleep 2
 done
 pass "postgres is accepting connections"
+
+# Now start other services to avoid data-volume races
+if [[ "${START_OTHER_SERVICES_AFTER_POSTGRES:-0}" == "1" ]]; then
+  echof "== Starting backup and pgadmin services after postgres readiness"
+  $COMPOSE_CMD up -d "$BACKUP_SERVICE_NAME" pgadmin || true
+fi
 
 # Check backup service existence
 echof "== Checking backup service container =="

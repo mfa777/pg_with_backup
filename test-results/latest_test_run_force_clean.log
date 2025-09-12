@@ -1,0 +1,259 @@
+== Prerequisite checks ==
+PASS: docker + docker compose available
+== FORCE_EMPTY_PGDATA=1: removing postgres-data volume and any previous compose state
+ Container pg_with_backup-backup-1  Stopping
+ Container pg_with_backup-pgadmin-1  Stopping
+ Container pg_with_backup-pgadmin-1  Stopped
+ Container pg_with_backup-pgadmin-1  Removing
+ Container pg_with_backup-pgadmin-1  Removed
+ Container pg_with_backup-backup-1  Stopped
+ Container pg_with_backup-backup-1  Removing
+ Container pg_with_backup-backup-1  Removed
+ Container postgres  Stopping
+ Container postgres  Stopped
+ Container postgres  Removing
+ Container postgres  Removed
+ Volume pgadmin-data  Removing
+ Volume postgres-data  Removing
+ Network postgres-network  Removing
+ Volume pgadmin-data  Removed
+ Volume postgres-data  Removed
+ Network postgres-network  Removed
+SKIP: postgres-data volume not present
+== Starting docker compose stack ==
+#1 [internal] load local bake definitions
+#1 reading from stdin 663B done
+#1 DONE 0.0s
+
+#2 [postgres internal] load build definition from Dockerfile.postgres-walg
+#2 transferring dockerfile: 1.59kB done
+#2 DONE 0.0s
+
+#3 [backup internal] load build definition from Dockerfile.backup
+#3 transferring dockerfile: 1.44kB done
+#3 DONE 0.0s
+
+#4 [backup internal] load metadata for docker.io/library/alpine:3.21
+#4 DONE 0.0s
+
+#5 [auth] library/postgres:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [postgres internal] load metadata for docker.io/library/postgres:17
+#6 ...
+
+#7 [backup internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [backup 1/9] FROM docker.io/library/alpine:3.21
+#8 DONE 0.0s
+
+#9 [backup internal] load build context
+#9 transferring context: 8.54kB done
+#9 DONE 0.0s
+
+#10 [backup 2/9] RUN apk add --no-cache     bash     postgresql17-client     curl     rclone     age     tzdata     ca-certificates     lz4     openssh-client &&     rm -rf /var/cache/apk/*
+#10 CACHED
+
+#11 [backup 6/9] COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+#11 CACHED
+
+#12 [backup 3/9] RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg-ubuntu-20.04-amd64.tar.gz     && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin     && chmod +x /usr/local/bin/wal-g     && rm /tmp/wal-g.tar.gz     || echo "Warning: wal-g download failed, but continuing for SQL mode compatibility"
+#12 CACHED
+
+#13 [backup 7/9] COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+#13 CACHED
+
+#14 [backup 8/9] COPY entrypoint-backup.sh /entrypoint.sh
+#14 CACHED
+
+#15 [backup 5/9] COPY backup.sh /usr/local/bin/backup.sh
+#15 CACHED
+
+#16 [backup 4/9] RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log     && mkdir -p /opt/walg/scripts
+#16 CACHED
+
+#17 [backup 9/9] RUN chmod +x /usr/local/bin/backup.sh /opt/walg/scripts/*.sh /entrypoint.sh
+#17 CACHED
+
+#18 [backup] exporting to image
+#18 exporting layers done
+#18 writing image sha256:ee31e14d543c7084ad7c66cad6dbfe0c22ad064d6bedbf53e65d3b5e12cd9c7d done
+#18 naming to docker.io/library/pg_with_backup-backup done
+#18 DONE 0.0s
+
+#19 [backup] resolving provenance for metadata file
+#19 DONE 0.0s
+
+#6 [postgres internal] load metadata for docker.io/library/postgres:17
+#6 DONE 1.5s
+
+#7 [postgres internal] load .dockerignore
+#7 CACHED
+
+#20 [postgres 1/9] FROM docker.io/library/postgres:17@sha256:feff5b24fedd610975a1f5e743c51a4b360437f4dc3a11acf740dcd708f413f6
+#20 DONE 0.0s
+
+#21 [postgres internal] load build context
+#21 transferring context: 2.24kB done
+#21 DONE 0.0s
+
+#22 [postgres 5/9] COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template
+#22 CACHED
+
+#23 [postgres 4/9] RUN mkdir -p /opt/walg/scripts     && mkdir -p /etc/postgresql     && mkdir -p /var/lib/postgresql/.ssh     && chown -R postgres:postgres /var/lib/postgresql/.ssh     && chmod 700 /var/lib/postgresql/.ssh
+#23 CACHED
+
+#24 [postgres 3/9] RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg-ubuntu-20.04-amd64.tar.gz     && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin || true     && if [ -f /usr/local/bin/wal-g ]; then chmod +x /usr/local/bin/wal-g; else find /usr/local/bin -type f -name 'wal-g*' -exec chmod +x {} ; || true; fi     && rm /tmp/wal-g.tar.gz
+#24 CACHED
+
+#25 [postgres 2/9] RUN apt-get update && apt-get install -y     curl     ca-certificates     lz4     brotli     zstd     openssh-client     procps     wget     gnupg     && rm -rf /var/lib/apt/lists/*
+#25 CACHED
+
+#26 [postgres 6/9] COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+#26 CACHED
+
+#27 [postgres 7/9] COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+#27 CACHED
+
+#28 [postgres 8/9] COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
+#28 CACHED
+
+#29 [postgres 9/9] RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+#29 CACHED
+
+#30 [postgres] exporting to image
+#30 exporting layers done
+#30 writing image sha256:eedd16053fc9d316811791dbb8d85b10b07579eb4e449a3930db8ddce3ca2f1d done
+#30 naming to docker.io/pgvector/pgvector:pg17 done
+#30 DONE 0.0s
+
+#31 [postgres] resolving provenance for metadata file
+#31 DONE 0.0s
+ postgres  Built
+ backup  Built
+ Network postgres-network  Creating
+ Network postgres-network  Created
+ Volume "pgadmin-data"  Creating
+ Volume "pgadmin-data"  Created
+ Volume "postgres-data"  Creating
+ Volume "postgres-data"  Created
+ Container postgres  Creating
+ Container postgres  Created
+ Container pg_with_backup-pgadmin-1  Creating
+ Container pg_with_backup-backup-1  Creating
+ Container pg_with_backup-pgadmin-1  Created
+ Container pg_with_backup-backup-1  Created
+ Container postgres  Starting
+ Container postgres  Started
+ Container pg_with_backup-pgadmin-1  Starting
+ Container pg_with_backup-backup-1  Starting
+ Container pg_with_backup-pgadmin-1  Started
+ Container pg_with_backup-backup-1  Started
+Triggered docker compose up
+== Waiting for postgres service container ==
+PASS: postgres container created: ed796e5fb092c030272f87f278050040a0ab6ee591b7c427adfe0bf8451d4e83
+== Waiting for Postgres readiness (pg_isready) ==
+Postgres logs (last 100 lines):
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+Starting PostgreSQL with wal-g support...
+Legacy SQL backup mode (wal-g not enabled)
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US.utf8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+initdb: error: directory "/var/lib/postgresql/data" exists but is not empty
+initdb: hint: If you want to create a new database system, either remove or empty the directory "/var/lib/postgresql/data" or run initdb with an argument other than "/var/lib/postgresql/data".
+FAIL: Timed out waiting for postgres to become ready
