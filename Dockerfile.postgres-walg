@@ -3,8 +3,8 @@ FROM postgres:17
 # Set argument for wal-g version
 ARG WALG_VERSION=v2.0.1
 
-# Install required packages for wal-g and SSH
-RUN apt-get update && apt-get install -y \
+# Install required packages for wal-g, SSH and build deps for extensions (pgvector)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     lz4 \
@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y \
     procps \
     wget \
     gnupg \
+    git \
+    build-essential \
+    postgresql-server-dev-17 \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install wal-g
@@ -44,6 +47,13 @@ COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
 
 # Make scripts executable
 RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+
+# Build and install pgvector extension
+RUN set -eux; \
+    git clone --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector; \
+    cd /tmp/pgvector; \
+    make && make install; \
+    rm -rf /tmp/pgvector
 
 # Use our custom entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint-walg.sh"]
