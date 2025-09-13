@@ -31,18 +31,26 @@ fi
 
 # Create a wrapper script for postgres command that applies our config
 if [ "$1" = 'postgres' ] && [ "$BACKUP_MODE" = "wal" ]; then
-    # Apply wal-g configuration before starting postgres
-    if [ -f "/etc/postgresql/postgresql.conf.template" ] && [ -f "$PGDATA/PG_VERSION" ]; then
-        echo "Applying WAL-G postgresql.conf configuration..."
-        # Backup original if it exists
-        if [ -f "$PGDATA/postgresql.conf" ]; then
-            cp "$PGDATA/postgresql.conf" "$PGDATA/postgresql.conf.backup.$(date +%s)"
-        fi
-        # Apply our template
-        cp /etc/postgresql/postgresql.conf.template "$PGDATA/postgresql.conf"
-        chown postgres:postgres "$PGDATA/postgresql.conf"
-        echo "WAL-G configuration applied successfully"
-    fi
+    # Set up a post-init hook to apply configuration after database initialization
+    echo "Setting up post-init hook for WAL-G configuration..."
+    
+    # Create a script that will apply the configuration after initialization
+    cat > /docker-entrypoint-initdb.d/99-apply-walg-config.sh << 'EOF'
+#!/bin/bash
+echo "Post-init: Applying WAL-G postgresql.conf configuration..."
+if [ -f "/etc/postgresql/postgresql.conf.template" ]; then
+    # Apply the WAL-G configuration template
+    cp /etc/postgresql/postgresql.conf.template "$PGDATA/postgresql.conf"
+    chown postgres:postgres "$PGDATA/postgresql.conf"
+    echo "WAL-G configuration template applied successfully"
+    
+    # Signal PostgreSQL to reload configuration
+    pg_ctl reload -D "$PGDATA" || echo "Note: pg_ctl reload failed, configuration will apply on next restart"
+else
+    echo "Warning: WAL-G configuration template not found"
+fi
+EOF
+    chmod +x /docker-entrypoint-initdb.d/99-apply-walg-config.sh
 fi
 
 # Find and call the original PostgreSQL entrypoint

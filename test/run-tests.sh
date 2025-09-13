@@ -32,6 +32,14 @@ fi
 
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-postgres}"
+# Load environment from .env file if it exists
+if [[ -f "$ENV_FILE" ]]; then
+  # Export variables from .env file to make them available to the test script
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
+
 BACKUP_MODE="${BACKUP_MODE:-sql}"
 
 echof() { printf "%s\n" "$*"; }
