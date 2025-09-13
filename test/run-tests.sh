@@ -282,6 +282,28 @@ if [[ "$BACKUP_MODE" == "wal" ]]; then
       skip "wal-g backup-list failed to run cleanly (likely no remote configured) — SKIPPING network tests"
     fi
   fi
+
+  # Run comprehensive WAL-G functionality tests
+  echof "== Running WAL-G specific functionality tests =="
+  if [ -f "$REPO_DIR/test/test-walg-functions.sh" ]; then
+    # Source the test functions and run them
+    source "$REPO_DIR/test/test-walg-functions.sh"
+    
+    # Set the container IDs for the walg test functions  
+    CONTAINER_ID="$CONTAINER_ID"
+    BACKUP_CONTAINER_ID="$BACKUP_CONTAINER_ID"
+    
+    # Run the specific tests
+    test_archive_command_wal_push
+    echo ""
+    test_backup_push
+    echo ""
+    test_delete_functionality
+    
+    pass "WAL-G functionality tests completed"
+  else
+    skip "WAL-G functionality test script not found"
+  fi
 else
   # SQL mode checks
   if [[ -n "$BACKUP_CONTAINER_ID" ]]; then
