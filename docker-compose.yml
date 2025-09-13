@@ -19,6 +19,7 @@ services:
       WALG_DELTA_MAX_STEPS: ${WALG_DELTA_MAX_STEPS:-7}
       WALG_DELTA_ORIGIN: ${WALG_DELTA_ORIGIN:-LATEST}
       WALG_LOG_LEVEL: ${WALG_LOG_LEVEL:-INFO}
+      SKIP_SSH_KEYSCAN: ${SKIP_SSH_KEYSCAN:-0}
     volumes:
       - pg_data:/var/lib/postgresql/data
       # Conditionally mount SSH key (create empty file if not exists)
