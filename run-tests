@@ -42,22 +42,22 @@ run_wal_mode() {
 	echo "SSH server setup completed."
 	
 	# Step 2: Clean up any existing containers and volumes to avoid conflicts
-	echo "Cleaning up any existing containers and volumes..."
-	docker compose --profile ssh-testing down -v 2>/dev/null || true
-	if docker volume ls --format '{{.Name}}' | grep -q '^postgres-data$'; then
-		docker volume rm postgres-data 2>/dev/null || true
-		echo "Removed existing postgres-data volume"
-	fi
+	# echo "Cleaning up any existing containers and volumes..."
+	# docker compose --profile ssh-testing down -v 2>/dev/null || true
+	# if docker volume ls --format '{{.Name}}' | grep -q '^postgres-data$'; then
+	# 	docker volume rm postgres-data 2>/dev/null || true
+	# 	echo "Removed existing postgres-data volume"
+	# fi
 	
 	# Step 3: Start the stack with SSH server using temporary containers
-	echo "Starting stack with SSH server for testing..."
-	docker compose --profile ssh-testing up --build -d
-	echo "Docker stack started with SSH testing profile."
+	#echo "Starting stack with SSH server for testing..."
+	#docker compose --profile ssh-testing up --build -d
+	#echo "Docker stack started with SSH testing profile."
 	
 	# Step 4: Run comprehensive E2E tests
 	echo "Running comprehensive WAL-G E2E tests..."
 	if [[ -f "$SCRIPT_DIR/test/test-walg-e2e.sh" ]]; then
-		CLEANUP=1 "$SCRIPT_DIR/test/test-walg-e2e.sh" "$@"
+		FORCE_EMPTY_PGDATA=1 CLEANUP=1 "$SCRIPT_DIR/test/test-walg-e2e.sh" "$@"
 	else
 		echo "WAL-G E2E test script not found, falling back to basic tests..."
 		# Fallback to basic test runner with wal-g specific settings

@@ -86,15 +86,16 @@ services:
 
 volumes:
   pg_data:
-    name: postgres-data  # Named volume for clarity
+    name: postgres-data # Named volume for clarity
+    external: true
   pgadmin_data:
-    name: pgadmin-data  # Named volume for pgAdmin data
+    name: pgadmin-data # Named volume for pgAdmin data
   ssh_data:
-    name: ssh-server-data  # Named volume for SSH server configuration
+    name: ssh-server-data # Named volume for SSH server configuration
   ssh_backups:
-    name: ssh-backups  # Named volume for SSH server backup storage
+    name: ssh-backups # Named volume for SSH server backup storage
 
 networks:
   pg_network:
     driver: bridge
-    name: postgres-network  # More standard naming
+    name: postgres-network # More standard naming

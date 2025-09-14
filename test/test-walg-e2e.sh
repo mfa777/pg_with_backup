@@ -54,7 +54,7 @@ wait_for_services() {
     echof "Waiting for services to be ready"
     
     # Wait for PostgreSQL
-    local timeout=120
+    local timeout=30
     local count=0
     while ! docker exec "$POSTGRES_CONTAINER_ID" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; do
         if ((count++ > timeout)); then
@@ -265,21 +265,28 @@ main() {
     
     # Optional: forcibly clear the postgres-data named volume before bringing up compose
     if [[ "${FORCE_EMPTY_PGDATA:-0}" == "1" ]]; then
-        echof "FORCE_EMPTY_PGDATA=1: removing postgres-data volume and any previous compose state"
-        # Stop and remove any running compose resources, then remove the named volume
-        $COMPOSE_CMD down -v 2>/dev/null || true
-        if docker volume ls --format '{{.Name}}' | grep -q '^postgres-data$'; then
-            docker volume rm postgres-data 2>/dev/null || true
-            pass "postgres-data volume removed"
-        else
-            skip "postgres-data volume not present"
-        fi
-        
-        # Restart the stack after cleanup
-        echof "Restarting stack after volume cleanup"
-        $COMPOSE_CMD up --build -d
-        sleep 10  # Give more time for initialization after cleanup
+        echof "== FORCE_EMPTY_PGDATA=1: removing postgres-data volume and any previous compose state"
+  # Stop and remove any running compose resources, then remove the named volume
+  $COMPOSE_CMD down -v || true
+  if docker volume ls --format '{{.Name}}' | grep -q '^postgres-data$'; then
+    docker volume rm postgres-data || true
+    pass "postgres-data volume removed"
+  else
+    skip "postgres-data volume not present"
+  fi
+
+  echof "== Preparing an empty postgres-data volume to avoid image population"
+  # Create an empty named volume and ensure it's empty by mounting a helper container
+  docker volume create postgres-data >/dev/null 2>&1 || true
+  docker run --rm -v postgres-data:/data alpine:3.21 sh -c "rm -rf /data/* /data/.* 2>/dev/null || true; ls -la /data || true" || true
+  pass "postgres-data prepared and emptied"
+
+
     fi
+            # Restart the stack after cleanup
+        echof "Restarting stack after volume cleanup"
+        $COMPOSE_CMD --profile ssh-testing up --build -d
+        sleep 10  # Give more time for initialization after cleanup
     
     # Verify stack is running
     if ! $COMPOSE_CMD ps "$POSTGRES_SERVICE_NAME" >/dev/null 2>&1; then
