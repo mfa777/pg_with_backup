@@ -42,6 +42,29 @@ services:
     networks:
       - pg_network
 
+  # Local SSH server for wal-g testing (only used when ENABLE_SSH_SERVER=1)
+  ssh-server:
+    image: linuxserver/openssh-server:latest
+    container_name: ssh-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-UTC}
+      - SUDO_ACCESS=false
+      - PASSWORD_ACCESS=false
+      - USER_NAME=${SSH_USER:-walg}
+    volumes:
+      - ssh_data:/config
+      - ssh_backups:/backups
+      # Mount SSH public key for authentication
+      - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}/id_rsa.pub:/config/.ssh/authorized_keys:ro
+    ports:
+      - "127.0.0.1:2222:2222"
+    networks:
+      - pg_network
+    profiles:
+      - ssh-testing
+
   pgadmin:
     image: dpage/pgadmin4:latest
     restart: always
@@ -66,6 +89,10 @@ volumes:
     name: postgres-data  # Named volume for clarity
   pgadmin_data:
     name: pgadmin-data  # Named volume for pgAdmin data
+  ssh_data:
+    name: ssh-server-data  # Named volume for SSH server configuration
+  ssh_backups:
+    name: ssh-backups  # Named volume for SSH server backup storage
 
 networks:
   pg_network:

@@ -67,6 +67,17 @@ WALG_BASEBACKUP_CRON="30 1 * * *"
 # Cron schedule for cleanup (when BACKUP_MODE=wal)
 WALG_CLEAN_CRON="15 3 * * *"
 
+# --- Local SSH Server for Testing (Optional) ---
+# Set to 1 to enable local SSH server for wal-g testing
+ENABLE_SSH_SERVER=0
+
+# SSH user for the local test server  
+SSH_USER=walg
+
+# Local SSH server configuration for testing wal-g
+# When using local SSH server, this replaces WALG_SSH_PREFIX
+WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server:2222/backups
+
 # --- Telegram Notifications (Optional) ---
 TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE
 TELEGRAM_CHAT_ID=PASTE_YOUR_TELEGRAM_CHAT_ID_HERE
