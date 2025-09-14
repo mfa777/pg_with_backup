@@ -86,6 +86,28 @@ validate_walg_env() {
         return 1
     fi
     
+    # Ensure environment variables are available to postgres user
+    echo "Setting up wal-g environment for postgres user..."
+    
+    # Create environment file for postgres user
+    cat > /var/lib/postgresql/.walg_env << EOF
+export PATH="/usr/local/bin:\$PATH"
+export WALG_SSH_PREFIX="${WALG_SSH_PREFIX}"
+export WALG_SSH_PRIVATE_KEY_PATH="${WALG_SSH_PRIVATE_KEY_PATH:-}"
+export WALG_COMPRESSION_METHOD="${WALG_COMPRESSION_METHOD:-lz4}"
+export WALG_DELTA_MAX_STEPS="${WALG_DELTA_MAX_STEPS:-7}"
+export WALG_DELTA_ORIGIN="${WALG_DELTA_ORIGIN:-LATEST}"
+export WALG_LOG_LEVEL="${WALG_LOG_LEVEL:-INFO}"
+EOF
+    
+    # Source wal-g environment in postgres user's profile
+    if ! grep -q "source /var/lib/postgresql/.walg_env" /var/lib/postgresql/.profile 2>/dev/null; then
+        echo "source /var/lib/postgresql/.walg_env" >> /var/lib/postgresql/.profile
+    fi
+    
+    chown postgres:postgres /var/lib/postgresql/.walg_env /var/lib/postgresql/.profile
+    chmod 600 /var/lib/postgresql/.walg_env
+    
     echo "wal-g environment validation passed"
     return 0
 }

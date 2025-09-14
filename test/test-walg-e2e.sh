@@ -77,6 +77,14 @@ wait_for_services() {
     done
     pass "SSH server is ready"
     
+    # Ensure backup directory has proper permissions for walg user
+    echo "Setting up backup directory permissions..."
+    if docker exec "$SSH_CONTAINER_ID" bash -c "mkdir -p /backups && chown walg:walg /backups && chmod 755 /backups" 2>/dev/null; then
+        pass "Backup directory permissions configured"
+    else
+        warn "Could not configure backup directory permissions (may still work)"
+    fi
+    
     # Give a moment for wal-g initialization
     sleep 5
 }
@@ -101,7 +109,7 @@ test_remote_connectivity() {
         fi
     
     # Test wal-g backup-list (should work even if empty)
-    if docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g backup-list" >/dev/null 2>&1; then
+    if docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'wal-g backup-list'" >/dev/null 2>&1; then
         pass "wal-g backup-list command successful"
     else
         warn "wal-g backup-list failed - this may be normal for first run"
@@ -115,7 +123,9 @@ get_backup_count() {
 
 # Get WAL files count in remote storage
 get_remote_wal_count() {
-    docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -name '*.lz4' -o -name '*.br' -o -name '*.gz' 2>/dev/null | wc -l" 2>/dev/null || echo "0"
+    # wal-g stores WAL files in subdirectories like wal_005/
+    # Look for compressed WAL files in the entire backup directory structure
+    docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f \( -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' \) 2>/dev/null | wc -l" 2>/dev/null || echo "0"
 }
 
 # Test 1: Archive command wal-push functionality
@@ -125,20 +135,36 @@ test_wal_push_e2e() {
     # Check initial WAL count
     local initial_wal_count
     initial_wal_count=$(get_remote_wal_count)
+    echo "Initial WAL count in remote storage: $initial_wal_count"
+    
+    # Show current remote directory structure for debugging
+    echo "Current remote directory structure:"
+    docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f 2>/dev/null | head -10" || echo "No files found or directory doesn't exist"
     
     # Generate some WAL activity
+    echo "Generating WAL activity..."
     docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "
         CREATE TABLE IF NOT EXISTS wal_test_table (id SERIAL PRIMARY KEY, data TEXT);
         INSERT INTO wal_test_table (data) SELECT 'test_data_' || generate_series(1, 1000);
         SELECT pg_switch_wal();
     " >/dev/null 2>&1
     
+    # Force WAL archiving to happen immediately
+    echo "Forcing WAL segment switch and archiving..."
+    docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "SELECT pg_switch_wal();" >/dev/null 2>&1
+    
     # Wait for WAL archiving to complete
-    sleep 10
+    echo "Waiting for WAL archiving to complete..."
+    sleep 15
     
     # Check if new WAL files appeared
     local final_wal_count
     final_wal_count=$(get_remote_wal_count)
+    echo "Final WAL count in remote storage: $final_wal_count"
+    
+    # Show what files were created for debugging
+    echo "Files in remote storage after WAL activity:"
+    docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f -newer /backups 2>/dev/null | head -10" || echo "No new files found"
     
     if ((final_wal_count > initial_wal_count)); then
         pass "WAL files successfully pushed to remote storage (count: $initial_wal_count -> $final_wal_count)"
@@ -150,6 +176,28 @@ test_wal_push_e2e() {
             warn "No explicit WAL push activity found in logs"
         fi
     else
+        # Additional debugging for failed WAL push
+        echo "=== DEBUGGING FAILED WAL PUSH ==="
+        echo "Checking PostgreSQL configuration..."
+        docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "SHOW archive_mode;" || echo "Failed to check archive_mode"
+        docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "SHOW archive_command;" || echo "Failed to check archive_command"
+        
+        echo "Checking PostgreSQL logs for errors..."
+        docker logs "$POSTGRES_CONTAINER_ID" 2>&1 | grep -i "archive\|wal-g\|error" | tail -10 || echo "No relevant log entries found"
+        
+        echo "Testing wal-g manually..."
+        docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g --version" || echo "wal-g not accessible"
+        
+        echo "Checking SSH connectivity from postgres container..."
+        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o ConnectTimeout=5 -o BatchMode=yes walg@ssh-server 'echo SSH test successful'\"" || echo "SSH test failed"
+        
+        echo "Checking backup directory permissions..."
+        docker exec "$SSH_CONTAINER_ID" bash -c "ls -la /backups/" || echo "Backup directory not accessible"
+        docker exec "$SSH_CONTAINER_ID" bash -c "id walg" || echo "walg user not found"
+        
+        echo "Testing manual wal-g wal-push..."
+        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'wal-g --help | head -5'" || echo "wal-g help failed"
+        
         die "No new WAL files found in remote storage (count remained at $initial_wal_count)"
     fi
 }
