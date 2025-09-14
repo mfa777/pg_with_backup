@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create directories
-RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log \
+RUN mkdir -p /config/rclone /tmp/backups /var/lib/backup/state /var/log \
     && mkdir -p /opt/walg/scripts
 
 # Copy scripts
