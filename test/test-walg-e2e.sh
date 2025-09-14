@@ -77,6 +77,14 @@ wait_for_services() {
     done
     pass "SSH server is ready"
     
+    # Ensure backup directory has proper permissions for walg user
+    echo "Setting up backup directory permissions..."
+    if docker exec "$SSH_CONTAINER_ID" bash -c "mkdir -p /backups && chown walg:walg /backups && chmod 755 /backups" 2>/dev/null; then
+        pass "Backup directory permissions configured"
+    else
+        warn "Could not configure backup directory permissions (may still work)"
+    fi
+    
     # Give a moment for wal-g initialization
     sleep 5
 }
@@ -101,7 +109,7 @@ test_remote_connectivity() {
         fi
     
     # Test wal-g backup-list (should work even if empty)
-    if docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g backup-list" >/dev/null 2>&1; then
+    if docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'wal-g backup-list'" >/dev/null 2>&1; then
         pass "wal-g backup-list command successful"
     else
         warn "wal-g backup-list failed - this may be normal for first run"
@@ -183,8 +191,12 @@ test_wal_push_e2e() {
         echo "Checking SSH connectivity from postgres container..."
         docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o ConnectTimeout=5 -o BatchMode=yes walg@ssh-server 'echo SSH test successful'\"" || echo "SSH test failed"
         
-        echo "Checking backup directory on SSH server..."
-        docker exec "$SSH_CONTAINER_ID" bash -c "ls -la /backups/ 2>/dev/null || echo 'Backup directory not accessible'"
+        echo "Checking backup directory permissions..."
+        docker exec "$SSH_CONTAINER_ID" bash -c "ls -la /backups/" || echo "Backup directory not accessible"
+        docker exec "$SSH_CONTAINER_ID" bash -c "id walg" || echo "walg user not found"
+        
+        echo "Testing manual wal-g wal-push..."
+        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'wal-g --help | head -5'" || echo "wal-g help failed"
         
         die "No new WAL files found in remote storage (count remained at $initial_wal_count)"
     fi

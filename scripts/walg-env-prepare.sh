@@ -91,6 +91,7 @@ validate_walg_env() {
     
     # Create environment file for postgres user
     cat > /var/lib/postgresql/.walg_env << EOF
+export PATH="/usr/local/bin:\$PATH"
 export WALG_SSH_PREFIX="${WALG_SSH_PREFIX}"
 export WALG_SSH_PRIVATE_KEY_PATH="${WALG_SSH_PRIVATE_KEY_PATH:-}"
 export WALG_COMPRESSION_METHOD="${WALG_COMPRESSION_METHOD:-lz4}"
