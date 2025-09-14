@@ -34,7 +34,8 @@ services:
     restart: unless-stopped
     env_file: .env
     volumes:
-      - pg_data:/var/lib/postgresql/data:${BACKUP_VOLUME_MODE:-rw}
+      # Dedicated volume for backup state (no dependency on pg_data for SQL mode)
+      - backup_state:/var/lib/backup:rw
       # Mount SSH key for wal-g mode
       - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
     depends_on:
@@ -87,6 +88,8 @@ services:
 volumes:
   pg_data:
     name: postgres-data  # Named volume for clarity
+  backup_state:
+    name: backup-state # Named volume for backup service state
   pgadmin_data:
     name: pgadmin-data  # Named volume for pgAdmin data
   ssh_data:

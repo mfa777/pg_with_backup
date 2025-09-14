@@ -16,7 +16,7 @@ RUN apk add --no-cache \
     rm -rf /var/cache/apk/*
 
 # Create directories
-RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log
+RUN mkdir -p /config/rclone /tmp/backups /var/lib/backup/state /var/log
 
 # Copy backup script
 COPY backup.sh /usr/local/bin/backup.sh

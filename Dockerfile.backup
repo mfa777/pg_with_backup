@@ -32,7 +32,7 @@ RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/downloa
     || echo "Warning: wal-g download failed, but continuing for SQL mode compatibility"
 
 # Create directories
-RUN mkdir -p /config/rclone /tmp/backups /var/lib/postgresql/data/backup_state /var/log \
+RUN mkdir -p /config/rclone /tmp/backups /var/lib/backup/state /var/log \
     && mkdir -p /opt/walg/scripts
 
 # Copy scripts
