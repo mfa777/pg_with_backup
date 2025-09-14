@@ -126,7 +126,11 @@ while true; do
 done
 pass "postgres is accepting connections"
 
-# Now start other services to avoid data-volume races
+# Refresh collation versions to avoid mismatch warnings/errors
+echof "== Refreshing database collation versions =="
+docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE postgres REFRESH COLLATION VERSION;" || true
+docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE template1 REFRESH COLLATION VERSION;" || true
+pass "Collation versions refreshed"
 if [[ "${START_OTHER_SERVICES_AFTER_POSTGRES:-0}" == "1" ]]; then
   echof "== Starting backup and pgadmin services after postgres readiness"
   $COMPOSE_CMD up -d "$BACKUP_SERVICE_NAME" pgadmin || true
@@ -155,6 +159,10 @@ if [[ -n "$NEW_CONTAINER_ID" && "$NEW_CONTAINER_ID" != "$CONTAINER_ID" ]]; then
     sleep 1
   done
   pass "recreated postgres is accepting connections"
+  # Refresh collation versions for recreated container
+  docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE postgres REFRESH COLLATION VERSION;" || true
+  docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE template1 REFRESH COLLATION VERSION;" || true
+# Close the recreated-container if block
 fi
 
 # Check backup service existence

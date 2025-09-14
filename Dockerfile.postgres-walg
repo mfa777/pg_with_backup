@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Download and install wal-g
 RUN set -eux; \
     echo "Downloading wal-g version ${WALG_VERSION}..."; \
-    wget -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz"; \
+    wget --no-check-certificate -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz"; \
     echo "Extracting wal-g..."; \
     cd /tmp && tar -tzf wal-g.tar.gz; \
     tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin; \

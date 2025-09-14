@@ -241,6 +241,77 @@ The test suite validates:
 
 See =test/README.org= for detailed test documentation.
 
+** WAL-G End-to-End Testing
+
+This project includes comprehensive end-to-end testing infrastructure for WAL-G operations.
+
+*** Quick Testing
+
+#+begin_src bash
+# Offline testing (no network required)
+./test/test-offline-e2e.sh
+
+# Full E2E testing with local SSH server
+./scripts/setup-local-ssh.sh
+docker compose --profile ssh-testing up --build -d
+./test/test-walg-e2e.sh
+#+end_src
+
+*** What Gets Tested
+
+The E2E tests validate actual operations:
+
+**** Archive Command Testing (wal-push)
+- Real WAL file archiving through PostgreSQL =archive_command=
+- Remote storage verification (files actually appear)
+- Archive command execution monitoring
+- Compression and storage format validation
+
+**** Backup Operations Testing (backup-push)  
+- Base backup creation and remote storage
+- Backup metadata and listing verification
+- Delta backup capabilities
+- Backup completion status validation
+
+**** Retention Testing (delete)
+- Backup retention policy enforcement
+- Old backup cleanup verification
+- Retention setting compliance
+- Data preservation safeguards
+
+*** Testing Modes
+
+**** Offline Testing
+- Uses mock wal-g implementation
+- Works in network-limited environments
+- Validates all logic without external dependencies
+- Perfect for CI/CD and development
+
+**** SSH Server Testing
+- Uses local SSH server container
+- Real SSH authentication with generated keys
+- Actual remote storage operations
+- Complete end-to-end validation
+
+*** Host Machine Cron
+
+For production, you can use host machine cron instead of container cron:
+
+#+begin_src bash
+# Add to host crontab (crontab -e):
+
+# Daily base backup at 1:30 AM
+30 1 * * * docker exec backup /opt/walg/scripts/wal-g-runner.sh backup
+
+# Daily cleanup at 3:15 AM  
+15 3 * * * docker exec backup /opt/walg/scripts/wal-g-runner.sh clean
+
+# Weekly full backup
+0 2 * * 0 FORCE_FULL=1 docker exec backup /opt/walg/scripts/wal-g-runner.sh backup
+#+end_src
+
+See =docs/WAL-G-TESTING.md= for complete testing documentation.
+
 ** Environment Variables Reference
 
 See =env_sample= for a complete list of configuration options for both modes.

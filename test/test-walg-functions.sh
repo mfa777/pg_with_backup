@@ -10,8 +10,10 @@ COMPOSE_CMD="docker compose"
 POSTGRES_SERVICE_NAME="postgres"
 BACKUP_SERVICE_NAME="backup"
 
-# Ensure we're using the same functions from the main test script
-source "$REPO_DIR/test/run-tests.sh" 2>/dev/null || true
+# Avoid sourcing the main run-tests.sh here to prevent recursive execution
+# (sourcing run-tests.sh from this file caused the whole test harness to
+# re-enter itself when run-tests.sh sources this file). Keep local helper
+# fallbacks below instead.
 
 # Helper functions if not already defined
 if ! declare -f echof >/dev/null 2>&1; then
