@@ -37,6 +37,18 @@ prepare_ssh_key() {
         echo "Warning: No SSH private key configured for wal-g"
         return 1
     fi
+
+    # Ensure the SSH client (used by tests) can find a default key without -i.
+    # Some test helpers call `ssh` as the postgres user without passing -i, so
+    # provide a default id_rsa in the postgres .ssh directory that points to the
+    # prepared key (copy it to keep permissions writable by postgres).
+    if [ -n "$WALG_SSH_PRIVATE_KEY_PATH" ] && [ -f "$WALG_SSH_PRIVATE_KEY_PATH" ]; then
+        if [ "$(realpath "$WALG_SSH_PRIVATE_KEY_PATH")" != "/var/lib/postgresql/.ssh/id_rsa" ]; then
+            cp "$WALG_SSH_PRIVATE_KEY_PATH" /var/lib/postgresql/.ssh/id_rsa
+            chmod 600 /var/lib/postgresql/.ssh/id_rsa
+            chown postgres:postgres /var/lib/postgresql/.ssh/id_rsa
+        fi
+    fi
     
     # Extract hostname from WALG_SSH_PREFIX for known_hosts
     if [ -n "$WALG_SSH_PREFIX" ]; then

@@ -86,11 +86,19 @@ test_remote_connectivity() {
     echof "Testing remote SSH connectivity and wal-g configuration"
     
     # Test SSH connectivity from postgres container
-    if docker exec "$POSTGRES_CONTAINER_ID" bash -c "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 walg@ssh-server 'echo SSH connection successful'" 2>/dev/null; then
-        pass "SSH connectivity to remote server working"
-    else
-        die "Cannot establish SSH connection to remote server"
-    fi
+        # Allow overriding test SSH port (internal container port). Default matches docker-compose (2222).
+        WALG_SSH_TEST_PORT="${WALG_SSH_TEST_PORT:-2222}"
+        # Run SSH as the 'postgres' user so it will use the key prepared at
+        # /var/lib/postgresql/.ssh/walg_key (walg-env-prepare.sh sets WALG_SSH_PRIVATE_KEY_PATH)
+        if docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -p $WALG_SSH_TEST_PORT walg@ssh-server 'echo SSH connection successful'\"" 2>/dev/null; then
+            pass "SSH connectivity to remote server working"
+        else
+            warn "SSH connectivity test failed — collecting verbose SSH output for debugging (as postgres)"
+            echo "---- SSH verbose debug output start ----"
+            docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -o PreferredAuthentications=publickey -p $WALG_SSH_TEST_PORT -vvv walg@ssh-server\"" || true
+            echo "---- SSH verbose debug output end ----"
+            die "Cannot establish SSH connection to remote server"
+        fi
     
     # Test wal-g backup-list (should work even if empty)
     if docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g backup-list" >/dev/null 2>&1; then
