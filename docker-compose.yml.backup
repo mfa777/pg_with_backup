@@ -30,7 +30,7 @@ services:
   backup:
     build:
       context: .
-      dockerfile: ${BACKUP_DOCKERFILE:-Dockerfile.backup}
+      dockerfile: Dockerfile.backup
     restart: unless-stopped
     env_file: .env
     volumes:
