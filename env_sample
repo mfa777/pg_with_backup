@@ -1,14 +1,18 @@
 # .env file
-# Rename it to .env before running docker
+# Copy this file to .env and configure for your backup mode
 
 # --- Global Mode Switch ---
-# Choose backup mode: sql (current mechanism) or wal (wal-g incremental)
+# Choose backup mode: sql (pg_dump backups) or wal (wal-g incremental backups)
 BACKUP_MODE=sql
 
-# For wal mode, you need to set these Docker Compose overrides:
-# POSTGRES_IMAGE=  (leave empty to build custom)
+# --- Docker Configuration Based on Mode ---
+# For SQL mode (default):
+POSTGRES_IMAGE=postgres:17
+# POSTGRES_DOCKERFILE=  (leave empty/commented for SQL mode)
+
+# For WAL mode (uncomment and comment out POSTGRES_IMAGE above):
 # POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
-# BACKUP_VOLUME_MODE=ro  (for wal mode, backup container only reads)
+# BACKUP_VOLUME_MODE=ro  (optional: backup container only reads in WAL mode)
 
 # --- PostgreSQL Credentials ---
 # Default superuser and password. CHANGE THE PASSWORD!
