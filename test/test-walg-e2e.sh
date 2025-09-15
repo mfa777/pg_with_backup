@@ -189,7 +189,7 @@ test_wal_push_e2e() {
         docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g --version" || echo "wal-g not accessible"
         
         echo "Checking SSH connectivity from postgres container..."
-        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o ConnectTimeout=5 -o BatchMode=yes walg@ssh-server 'echo SSH test successful'\"" || echo "SSH test failed"
+        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o ConnectTimeout=5 -o BatchMode=yes -p 2222 walg@ssh-server 'echo SSH test successful'\"" || echo "SSH test failed"
         
         echo "Checking backup directory permissions..."
         docker exec "$SSH_CONTAINER_ID" bash -c "ls -la /backups/" || echo "Backup directory not accessible"
