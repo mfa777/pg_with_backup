@@ -4,6 +4,10 @@ Sets up PostgreSQL with automated, encrypted backups to remote storage. Supports
 - **SQL Mode**: Traditional approach using pg_dumpall + Age encryption + Rclone (original)
 - **WAL Mode**: Incremental backups using wal-g + SSH storage + Point-in-Time Recovery
 
+#+begin_note
+Cleanup Status: Legacy duplicate files (extra compose, simple Dockerfiles, old entrypoint) were removed in Phase 2 refactor. See =CLEANUP.md= for historical context and migration notes.
+#+end_note
+
 ** Features
 
 - PostgreSQL Database (version 17 with pg_vector extension)
@@ -57,7 +61,7 @@ REMOTE_PATH=your_rclone_remote:path/to/backups
    #+begin_src bash
    BACKUP_MODE=wal
    POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
-   BACKUP_VOLUME_MODE=ro
+   # BACKUP_VOLUME_MODE=ro   # (optional) only needed if you externally constrain write access
    #+end_src
 
 2. *Configure SSH storage:* Set up a backup server and configure:
