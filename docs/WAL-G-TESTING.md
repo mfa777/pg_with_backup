@@ -17,7 +17,7 @@ The WAL-G testing infrastructure provides:
 
 ```bash
 # Setup local SSH server and configure environment
-./scripts/setup-local-ssh.sh
+./scripts/setup/setup-local-ssh.sh
 
 # Start the stack with SSH server
 docker compose --profile ssh-testing up --build -d
@@ -59,7 +59,7 @@ The infrastructure includes a local SSH server that provides:
    - Configured networks and volumes for testing
    - Proper service dependencies
 
-3. **Setup Script** (`scripts/setup-local-ssh.sh`)
+3. **Setup Script** (`scripts/setup/setup-local-ssh.sh`)
    - Generates SSH key pairs automatically
    - Configures `.env` file for local testing
    - Sets up proper permissions and authentication
@@ -265,7 +265,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Setup WAL-G testing
-        run: ./scripts/setup-local-ssh.sh
+        run: ./scripts/setup/setup-local-ssh.sh
         
       - name: Run offline tests
         run: ./test/test-offline-e2e.sh
