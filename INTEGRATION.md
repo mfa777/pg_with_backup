@@ -25,7 +25,7 @@ This single command now performs all these steps automatically:
 
 The main test runner now integrates all required steps:
 
-- **Automatic SSH Setup**: Calls `./scripts/setup-local-ssh.sh`
+- **Automatic SSH Setup**: Calls `./scripts/setup/setup-local-ssh.sh`
 - **Volume Conflict Resolution**: Prevents "directory not empty" errors
 - **Stack Management**: Uses `--profile ssh-testing` automatically
 - **E2E Integration**: Runs `./test/test-walg-e2e.sh` with proper environment
@@ -70,7 +70,7 @@ FORCE_EMPTY_PGDATA=1 BACKUP_MODE=wal ./run-tests
 ### Manual Step-by-Step (for debugging)
 ```bash
 # Step 1: Setup SSH server and environment
-./scripts/setup-local-ssh.sh
+./scripts/setup/setup-local-ssh.sh
 
 # Step 2: Start stack manually
 docker compose --profile ssh-testing up --build -d

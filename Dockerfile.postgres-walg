@@ -49,9 +49,9 @@ RUN mkdir -p /opt/walg/scripts \
 COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template
 
 # Copy wal-g scripts
-COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
-COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
-COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
+COPY scripts/walg/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+COPY scripts/walg/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+COPY scripts/walg/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
 
 # Make scripts executable
 RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh

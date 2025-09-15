@@ -60,9 +60,9 @@ test_script_availability() {
     echof "Testing script availability"
     
     local scripts=(
-        "scripts/wal-g-runner.sh"
+        "scripts/walg/wal-g-runner.sh"
         "scripts/walg-env-prepare.sh"
-        "scripts/setup-local-ssh.sh"
+        "scripts/setup/setup-local-ssh.sh"
         "test/test-walg-e2e.sh"
         "test/test-offline-e2e.sh"
         "scripts/mock-wal-g.sh"
@@ -281,7 +281,7 @@ main() {
     echo ""
     echo "Next steps:"
     echo "1. Run offline tests: ./test/test-offline-e2e.sh"
-    echo "2. Setup local SSH server: ./scripts/setup-local-ssh.sh"
+    echo "2. Setup local SSH server: ./scripts/setup/setup-local-ssh.sh"
     echo "3. Run full E2E tests: ./test/test-walg-e2e.sh"
     echo ""
     echo "For more information, see: docs/WAL-G-TESTING.md"

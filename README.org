@@ -252,7 +252,7 @@ This project includes comprehensive end-to-end testing infrastructure for WAL-G 
 ./test/test-offline-e2e.sh
 
 # Full E2E testing with local SSH server
-./scripts/setup-local-ssh.sh
+./scripts/setup/setup-local-ssh.sh
 docker compose --profile ssh-testing up --build -d
 ./test/test-walg-e2e.sh
 #+end_src
