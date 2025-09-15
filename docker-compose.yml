@@ -2,9 +2,9 @@ services:
   postgres:
     # Use wal-g enhanced image when BACKUP_MODE=wal, otherwise use standard image
     image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg17}
-    build:
-      context: .
-      dockerfile: ${POSTGRES_DOCKERFILE:-}
+    # build:
+    #   context: .
+    #   dockerfile: ${POSTGRES_DOCKERFILE}
     container_name: postgres
     restart: unless-stopped
     environment:

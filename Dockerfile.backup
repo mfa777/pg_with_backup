@@ -1,23 +1,37 @@
-FROM alpine:3.21
+FROM ubuntu:22.04
 
 # Set environment variables
 ENV TZ=UTC
 ENV BACKUP_CRON_SCHEDULE="0 2 * * *"
 ENV BACKUP_MODE=sql
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install required packages (start with original packages and add wal-g specific ones)
-RUN apk add --no-cache \
+# Install required packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
-    postgresql17-client \
+    postgresql-client \
     curl \
-    rclone \
-    age \
-    tzdata \
+    wget \
+    unzip \
+    tar \
     ca-certificates \
-    lz4 \
-    openssh-client \
-    gcompat && \
-    rm -rf /var/cache/apk/*
+    cron \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install rclone manually  
+RUN wget https://downloads.rclone.org/v1.68.1/rclone-v1.68.1-linux-amd64.zip -O /tmp/rclone.zip && \
+    unzip /tmp/rclone.zip -d /tmp && \
+    mv /tmp/rclone-*/rclone /usr/local/bin/ && \
+    chmod +x /usr/local/bin/rclone && \
+    rm -rf /tmp/rclone*
+
+# Install age manually
+RUN wget https://github.com/FiloSottile/age/releases/download/v1.2.0/age-v1.2.0-linux-amd64.tar.gz -O /tmp/age.tar.gz && \
+    tar -xzf /tmp/age.tar.gz -C /tmp && \
+    mv /tmp/age/age /usr/local/bin/ && \
+    mv /tmp/age/age-keygen /usr/local/bin/ && \
+    chmod +x /usr/local/bin/age* && \
+    rm -rf /tmp/age*
 
 # Download and install wal-g (use Ubuntu build with glibc compatibility)
 ARG WALG_VERSION=v2.0.1
