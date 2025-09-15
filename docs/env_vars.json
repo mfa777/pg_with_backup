@@ -1,0 +1,270 @@
+{
+  "_meta": {
+    "version": 1,
+    "generated": "2025-09-15",
+    "description": "Machine-readable catalog of environment variables for pg_with_backup"
+  },
+  "variables": [
+    {
+      "name": "BACKUP_MODE",
+      "category": "core",
+      "modes": ["sql", "wal"],
+      "default": "sql",
+      "required": true,
+      "since": "initial",
+      "description": "Select backup strategy: full SQL dumps (sql) or WAL-G incremental (wal)."
+    },
+    {
+      "name": "POSTGRES_USER",
+      "category": "postgres",
+      "default": "postgres",
+      "required": true,
+      "description": "PostgreSQL superuser name used for backups and initial auth."
+    },
+    {
+      "name": "POSTGRES_PASSWORD",
+      "category": "postgres",
+      "default": null,
+      "required": true,
+      "description": "Superuser password. REQUIRED. Change in production." 
+    },
+    {
+      "name": "POSTGRES_DOCKERFILE",
+      "category": "build",
+      "default": null,
+      "required": false,
+      "description": "Custom Dockerfile for postgres service (use Dockerfile.postgres-walg for WAL mode)."
+    },
+    {
+      "name": "POSTGRES_IMAGE",
+      "category": "build",
+      "default": "pgvector/pgvector:pg17",
+      "required": false,
+      "description": "Base image to use when not building a custom Dockerfile." 
+    },
+    {
+      "name": "RCLONE_CONFIG_BASE64",
+      "category": "sql_mode",
+      "default": null,
+      "required": {"when": "BACKUP_MODE=sql"},
+      "description": "Base64 encoded rclone.conf content for SQL mode uploads." 
+    },
+    {
+      "name": "AGE_PUBLIC_KEY",
+      "category": "sql_mode",
+      "default": null,
+      "required": {"when": "BACKUP_MODE=sql"},
+      "description": "Age public key used to encrypt SQL dump." 
+    },
+    {
+      "name": "REMOTE_PATH",
+      "category": "sql_mode",
+      "default": null,
+      "required": {"when": "BACKUP_MODE=sql"},
+      "description": "Rclone remote target (e.g. myremote:folder)." 
+    },
+    {
+      "name": "SQL_BACKUP_RETAIN_DAYS",
+      "category": "sql_mode",
+      "default": 30,
+      "required": false,
+      "description": "Days to retain SQL backups on remote (delete based on age)." 
+    },
+    {
+      "name": "WALG_SSH_PREFIX",
+      "category": "wal_mode",
+      "default": null,
+      "required": {"when": "BACKUP_MODE=wal"},
+      "description": "SSH storage URI for wal-g (ssh://user@host[:port]/absolute/path)." 
+    },
+    {
+      "name": "SSH_PORT",
+      "category": "wal_mode",
+      "default": 22,
+      "required": false,
+      "description": "SSH port derived automatically if present in WALG_SSH_PREFIX; override if needed." 
+    },
+    {
+      "name": "WALG_SSH_PRIVATE_KEY",
+      "category": "wal_mode",
+      "default": null,
+      "required": false,
+      "description": "Base64 encoded private key content (alternative to WALG_SSH_PRIVATE_KEY_PATH)." 
+    },
+    {
+      "name": "WALG_SSH_PRIVATE_KEY_PATH",
+      "category": "wal_mode",
+      "default": "/secrets/walg_ssh_key",
+      "required": false,
+      "description": "Path (mounted) to SSH private key for wal-g backend." 
+    },
+    {
+      "name": "SSH_KEY_PATH",
+      "category": "wal_mode",
+      "default": "./secrets/walg_ssh_key",
+      "required": false,
+      "description": "Host path mounted into containers for SSH key directory (compose binding)." 
+    },
+    {
+      "name": "WALG_COMPRESSION_METHOD",
+      "category": "wal_mode",
+      "default": "lz4",
+      "required": false,
+      "description": "Compression used by wal-g (lz4/zstd/brotli/etc)." 
+    },
+    {
+      "name": "WALG_DELTA_MAX_STEPS",
+      "category": "wal_mode",
+      "default": 7,
+      "required": false,
+      "description": "Max incremental chain depth before forcing full backup." 
+    },
+    {
+      "name": "WALG_DELTA_ORIGIN",
+      "category": "wal_mode",
+      "default": "LATEST",
+      "required": false,
+      "description": "Origin for delta backups (LATEST, FULL, etc)." 
+    },
+    {
+      "name": "WALG_LOG_LEVEL",
+      "category": "wal_mode",
+      "default": "DEVEL",
+      "required": false,
+      "description": "wal-g internal log level (DEVEL/NORMAL/WARN/etc)." 
+    },
+    {
+      "name": "WALG_RETENTION_FULL",
+      "category": "wal_mode",
+      "default": 7,
+      "required": false,
+      "description": "Number of full backups to retain (wal-g delete retain FULL)." 
+    },
+    {
+      "name": "WALG_RETENTION_DAYS",
+      "category": "wal_mode",
+      "default": 30,
+      "required": false,
+      "description": "Planned/optional days-based retention (not enforced directly in current scripts)." 
+    },
+    {
+      "name": "WALG_BASEBACKUP_CRON",
+      "category": "wal_mode",
+      "default": "30 1 * * *",
+      "required": false,
+      "description": "Cron schedule for base backup job in WAL mode." 
+    },
+    {
+      "name": "WALG_CLEAN_CRON",
+      "category": "wal_mode",
+      "default": "15 3 * * *",
+      "required": false,
+      "description": "Cron schedule for wal-g cleanup/retention." 
+    },
+    {
+      "name": "ENABLE_SSH_SERVER",
+      "category": "testing",
+      "default": 0,
+      "required": false,
+      "description": "Enable internal test SSH server container (compose profile)." 
+    },
+    {
+      "name": "SSH_USER",
+      "category": "testing",
+      "default": "walg",
+      "required": false,
+      "description": "Username for local test SSH server (if enabled)." 
+    },
+    {
+      "name": "WALG_SSH_PREFIX_LOCAL",
+      "category": "testing",
+      "default": "ssh://walg@ssh-server/backups",
+      "required": false,
+      "description": "Helper override for local test server; can substitute WALG_SSH_PREFIX in local workflows." 
+    },
+    {
+      "name": "SKIP_SSH_KEYSCAN",
+      "category": "testing",
+      "default": 0,
+      "required": false,
+      "description": "Skip ssh-keyscan host key fetch (useful in deterministic CI/local)." 
+    },
+    {
+      "name": "TELEGRAM_BOT_TOKEN",
+      "category": "notifications",
+      "default": null,
+      "required": false,
+      "description": "Bot token for Telegram alerts (optional)." 
+    },
+    {
+      "name": "TELEGRAM_CHAT_ID",
+      "category": "notifications",
+      "default": null,
+      "required": false,
+      "description": "Chat/channel ID for Telegram alerts." 
+    },
+    {
+      "name": "TELEGRAM_MESSAGE_PREFIX",
+      "category": "notifications",
+      "default": "Database",
+      "required": false,
+      "description": "Prefix added to Telegram messages." 
+    },
+    {
+      "name": "TZ",
+      "category": "general",
+      "default": "UTC",
+      "required": false,
+      "description": "Container timezone affecting cron and logs." 
+    },
+    {
+      "name": "BACKUP_CRON_SCHEDULE",
+      "category": "sql_mode",
+      "default": "0 2 * * *",
+      "required": false,
+      "description": "Cron schedule for daily SQL dump in SQL mode." 
+    },
+    {
+      "name": "PGADMIN_DEFAULT_EMAIL",
+      "category": "pgadmin",
+      "default": "admin@admin.com",
+      "required": false,
+      "description": "Initial pgAdmin login email." 
+    },
+    {
+      "name": "PGADMIN_DEFAULT_PASSWORD",
+      "category": "pgadmin",
+      "default": "admin",
+      "required": false,
+      "description": "Initial pgAdmin login password (change in production)." 
+    },
+    {
+      "name": "BACKUP_DOCKERFILE",
+      "category": "build",
+      "default": "Dockerfile.backup",
+      "required": false,
+      "description": "Override backup service Dockerfile (rarely needed)." 
+    },
+    {
+      "name": "BACKUP_VOLUME_MODE",
+      "category": "advanced",
+      "default": null,
+      "required": false,
+      "description": "Advisory hint used externally to mark backup container volume access (not consumed by scripts)." 
+    },
+    {
+      "name": "SSH_USERNAME",
+      "category": "wal_mode",
+      "default": null,
+      "required": false,
+      "description": "Derived automatically from WALG_SSH_PREFIX; may override explicitly." 
+    },
+    {
+      "name": "WALE_SSH_PREFIX",
+      "category": "compatibility",
+      "default": null,
+      "required": false,
+      "description": "Backward-compatible alias emitted for tooling expecting legacy WALE_ prefix." 
+    }
+  ]
+}

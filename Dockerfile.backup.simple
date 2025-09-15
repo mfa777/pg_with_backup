@@ -1,3 +1,5 @@
+## DEPRECATED: Experimental simple Ubuntu variant. Use `Dockerfile.backup` instead.
+## Will be removed in Phase 2. See CLEANUP.md
 FROM ubuntu:22.04
 
 # Avoid interactive prompts

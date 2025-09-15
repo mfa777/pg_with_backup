@@ -1,3 +1,6 @@
+## DEPRECATED: This Dockerfile provided a SQL-mode only backup container.
+## Replaced by `Dockerfile.backup` which supports both SQL and WAL modes.
+## Will be removed in Phase 2. See CLEANUP.md
 FROM alpine:3.21
 
 # Set environment variables

@@ -1,0 +1,57 @@
+# Environment Variables Reference
+
+This document summarizes all supported environment variables. It is generated/curated alongside the machine-readable catalog located at `docs/env_vars.json`.
+
+| Name | Category | Default | Required | Mode Scope | Description |
+|------|----------|---------|----------|------------|-------------|
+| BACKUP_MODE | core | sql | yes | all | Select backup strategy: `sql` full dumps or `wal` incremental wal-g |
+| POSTGRES_USER | postgres | postgres | yes | all | PostgreSQL superuser name used for backups |
+| POSTGRES_PASSWORD | postgres | (none) | yes | all | PostgreSQL superuser password (must set) |
+| POSTGRES_DOCKERFILE | build | (unset) | no | wal (optional) | Custom Dockerfile for postgres (use `Dockerfile.postgres-walg` for WAL mode) |
+| POSTGRES_IMAGE | build | pgvector/pgvector:pg17 | no | all | Base image when not building a custom Dockerfile |
+| BACKUP_DOCKERFILE | build | Dockerfile.backup | no | all | Override backup service Dockerfile |
+| RCLONE_CONFIG_BASE64 | sql_mode | (none) | when sql | sql | Base64 rclone.conf content for SQL uploads |
+| AGE_PUBLIC_KEY | sql_mode | (none) | when sql | sql | Age public key for dump encryption |
+| REMOTE_PATH | sql_mode | (none) | when sql | sql | Rclone remote target (e.g. `remote:folder`) |
+| SQL_BACKUP_RETAIN_DAYS | sql_mode | 30 | no | sql | Days to retain SQL dumps remotely |
+| BACKUP_CRON_SCHEDULE | sql_mode | 0 2 * * * | no | sql | Cron schedule for daily SQL dump |
+| WALG_SSH_PREFIX | wal_mode | (none) | when wal | wal | SSH storage URI `ssh://user@host[:port]/abs/path` |
+| WALG_SSH_PREFIX_LOCAL | testing | ssh://walg@ssh-server/backups | no | wal/testing | Local test override for WALG_SSH_PREFIX |
+| SSH_PORT | wal_mode | 22 | no | wal | SSH port (auto-detected from prefix if present) |
+| WALG_SSH_PRIVATE_KEY | wal_mode | (none) | no | wal | Base64 encoded private key (alternative to path) |
+| WALG_SSH_PRIVATE_KEY_PATH | wal_mode | /secrets/walg_ssh_key | no | wal | Mounted path to SSH private key |
+| SSH_KEY_PATH | wal_mode | ./secrets/walg_ssh_key | no | wal | Host path mounted for key directory |
+| WALG_COMPRESSION_METHOD | wal_mode | lz4 | no | wal | wal-g compression method |
+| WALG_DELTA_MAX_STEPS | wal_mode | 7 | no | wal | Max delta chain length before full backup |
+| WALG_DELTA_ORIGIN | wal_mode | LATEST | no | wal | Delta origin reference |
+| WALG_LOG_LEVEL | wal_mode | DEVEL | no | wal | wal-g log verbosity |
+| WALG_RETENTION_FULL | wal_mode | 7 | no | wal | Number of full backups to retain |
+| WALG_RETENTION_DAYS | wal_mode | 30 | no | wal (planned) | Optional days-based retention (not enforced yet) |
+| WALG_BASEBACKUP_CRON | wal_mode | 30 1 * * * | no | wal | Cron for base backups |
+| WALG_CLEAN_CRON | wal_mode | 15 3 * * * | no | wal | Cron for retention/cleanup |
+| ENABLE_SSH_SERVER | testing | 0 | no | wal/testing | Enable internal test SSH server profile |
+| SSH_USER | testing | walg | no | wal/testing | Username for local test SSH server |
+| SKIP_SSH_KEYSCAN | testing | 0 | no | wal/testing | Skip ssh-keyscan host key fetch |
+| TELEGRAM_BOT_TOKEN | notifications | (none) | no | all | Telegram bot token for alerts |
+| TELEGRAM_CHAT_ID | notifications | (none) | no | all | Telegram target chat ID |
+| TELEGRAM_MESSAGE_PREFIX | notifications | Database | no | all | Prefix for Telegram messages |
+| TZ | general | UTC | no | all | Container timezone (cron + logs) |
+| PGADMIN_DEFAULT_EMAIL | pgadmin | admin@admin.com | no | all | pgAdmin initial email |
+| PGADMIN_DEFAULT_PASSWORD | pgadmin | admin | no | all | pgAdmin initial password |
+| BACKUP_VOLUME_MODE | advanced | (unset) | no | wal | Advisory flag for external orchestration only |
+| SSH_USERNAME | wal_mode | (derived) | no | wal | Auto-derived from WALG_SSH_PREFIX (override allowed) |
+| WALE_SSH_PREFIX | compatibility | (derived) | no | wal | Legacy alias exported for tooling expecting WALE_* |
+
+## Notes
+- "when sql" / "when wal" means required only if that mode is active.
+- Some variables (e.g., `WALG_RETENTION_DAYS`) are placeholders for planned enforcement.
+- `WALE_SSH_PREFIX` is emitted automatically; do not set manually unless for legacy tooling.
+
+## Machine-Readable Format
+See `docs/env_vars.json` for structured metadata (suitable for code generation, validation tooling, or schema export).
+
+## Update Process
+1. Edit `docs/env_vars.json` (source of truth)
+2. Synchronize this Markdown table if variables change
+3. Run tests to ensure no breakage: `./test/run-tests.sh`
+

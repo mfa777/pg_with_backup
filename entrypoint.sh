@@ -1,4 +1,6 @@
 #!/bin/bash
+# DEPRECATED: Use `entrypoint-backup.sh` (multi-mode) instead. Retained for
+# backward compatibility in Phase 1. See CLEANUP.md
 set -e
 
 # Set timezone
