@@ -13,9 +13,9 @@ warn() { echo "WARN: $*"; }
 echof "Demonstrating Integrated WAL-G Testing Workflow"
 
 echo "Step 1: Setup local SSH server and configure environment"
-if [[ -f "$SCRIPT_DIR/scripts/setup-local-ssh.sh" ]]; then
+if [[ -f "$SCRIPT_DIR/scripts/setup/setup-local-ssh.sh" ]]; then
     echo "  - SSH setup script exists: ✓"
-    echo "  - This would run: $SCRIPT_DIR/scripts/setup-local-ssh.sh"
+    echo "  - This would run: $SCRIPT_DIR/scripts/setup/setup-local-ssh.sh"
     echo "  - Creates SSH keys, updates .env file, configures local SSH server"
 else
     echo "  - SSH setup script missing: ✗"

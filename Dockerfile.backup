@@ -54,8 +54,8 @@ RUN mkdir -p /config/rclone /tmp/backups /var/lib/backup/state /var/log \
 
 # Copy scripts
 COPY backup.sh /usr/local/bin/backup.sh
-COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
-COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+COPY scripts/walg/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+COPY scripts/walg/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
 COPY entrypoint-backup.sh /entrypoint.sh
 
 # Make scripts executable

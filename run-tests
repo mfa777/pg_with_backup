@@ -38,7 +38,7 @@ run_wal_mode() {
 	
 	# Step 1: Setup local SSH server and configure environment  
 	echo "Setting up local SSH server and environment..."
-	"$SCRIPT_DIR/scripts/setup-local-ssh.sh"
+	"$SCRIPT_DIR/scripts/setup/setup-local-ssh.sh"
 	echo "SSH server setup completed."
 	
 	# Step 2: Clean up any existing containers and volumes to avoid conflicts

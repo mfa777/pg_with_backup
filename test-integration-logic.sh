@@ -16,7 +16,7 @@ echof "Testing Integration Logic (Simplified)"
 # Test 1: Check integration components exist
 echof "Testing Component Availability"
 
-if [[ -f "$SCRIPT_DIR/scripts/setup-local-ssh.sh" ]]; then
+if [[ -f "$SCRIPT_DIR/scripts/setup/setup-local-ssh.sh" ]]; then
     pass "SSH setup script available"
 else
     die "SSH setup script missing"
@@ -86,9 +86,9 @@ fi
 echof "Testing Workflow Simulation"
 
 echo "Simulating SSH setup..."
-if [[ -x "$SCRIPT_DIR/scripts/setup-local-ssh.sh" ]]; then
+if [[ -x "$SCRIPT_DIR/scripts/setup/setup-local-ssh.sh" ]]; then
     echo "SSH setup script is executable"
-    echo "Would run: $SCRIPT_DIR/scripts/setup-local-ssh.sh"
+    echo "Would run: $SCRIPT_DIR/scripts/setup/setup-local-ssh.sh"
     pass "SSH setup simulation OK"
 else
     warn "SSH setup script not executable"

@@ -187,7 +187,7 @@ test_postgresql_integration() {
     fi
     
     # Test wal-g runner script
-    local runner_script="$SCRIPT_DIR/scripts/wal-g-runner.sh"
+    local runner_script="$SCRIPT_DIR/scripts/walg/wal-g-runner.sh"
     if [[ -f "$runner_script" ]]; then
         pass "wal-g-runner.sh script found"
         
@@ -224,7 +224,7 @@ test_ssh_setup() {
             warn "SSH private key permissions may be incorrect: $key_perms"
         fi
     else
-        skip "SSH key pair not found (run ./scripts/setup-local-ssh.sh first)"
+        skip "SSH key pair not found (run ./scripts/setup/setup-local-ssh.sh first)"
     fi
     
     # Check .env configuration
@@ -282,7 +282,7 @@ main() {
     echo "Mock backups created in: $MOCK_BACKUP_DIR"
     echo ""
     echo "To test with real wal-g and SSH server:"
-    echo "1. Run: ./scripts/setup-local-ssh.sh"
+    echo "1. Run: ./scripts/setup/setup-local-ssh.sh"
     echo "2. Start stack: docker compose --profile ssh-testing up --build -d"
     echo "3. Run: ./test/test-walg-e2e.sh"
 }
