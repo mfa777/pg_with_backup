@@ -32,8 +32,11 @@ SQL_BACKUP_RETAIN_DAYS=30
 
 # --- WAL Mode Configuration (wal-g over SSH) ---
 # These are used when BACKUP_MODE=wal
-# SSH remote path for wal-g (e.g., ssh://walg@backup-host:22/var/backups/pg/prod)
-WALG_SSH_PREFIX=ssh://walg@your-backup-host:22/absolute/path/to/backup/directory
+# SSH remote path for wal-g (omit port; set WALG_SSH_PORT below to avoid double-port parsing issues)
+WALG_SSH_PREFIX=ssh://walg@your-backup-host/absolute/path/to/backup/directory
+
+# SSH port for wal-g backend (if not standard 22)
+SSH_PORT=22
 
 # SSH private key for authentication (base64 encoded)
 # Run: cat ~/.ssh/id_walg | base64 -w0
@@ -75,8 +78,8 @@ ENABLE_SSH_SERVER=0
 SSH_USER=walg
 
 # Local SSH server configuration for testing wal-g
-# When using local SSH server, this replaces WALG_SSH_PREFIX
-WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server:2222/backups
+# When using local SSH server, this replaces WALG_SSH_PREFIX (port provided via WALG_SSH_PORT)
+WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server/backups
 
 # --- Telegram Notifications (Optional) ---
 TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE

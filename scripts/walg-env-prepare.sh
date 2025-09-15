@@ -53,8 +53,12 @@ prepare_ssh_key() {
     # Extract hostname from WALG_SSH_PREFIX for known_hosts
     if [ -n "$WALG_SSH_PREFIX" ]; then
         SSH_HOST=$(echo "$WALG_SSH_PREFIX" | sed -n 's|ssh://[^@]*@\([^:]*\):.*|\1|p')
-        SSH_PORT=$(echo "$WALG_SSH_PREFIX" | sed -n 's|ssh://[^@]*@[^:]*:\([0-9]*\)/.*|\1|p')
-        SSH_PORT=${SSH_PORT:-22}
+        _prefix_port=$(echo "$WALG_SSH_PREFIX" | sed -n 's|ssh://[^@]*@[^:]*:\([0-9]*\)/.*|\1|p')
+        if [ -n "$_prefix_port" ]; then
+            SSH_PORT="$_prefix_port"
+        elif [ -z "${SSH_PORT:-}" ]; then
+            SSH_PORT=22
+        fi
         
         if [ -n "$SSH_HOST" ]; then
             echo "Adding $SSH_HOST to known_hosts..."
@@ -89,11 +93,54 @@ validate_walg_env() {
     # Ensure environment variables are available to postgres user
     echo "Setting up wal-g environment for postgres user..."
     
+    # Derive SSH specifics for wal-g (flags expect SSH_* env vars)
+    # Extract username if not explicitly provided
+    if [ -n "$WALG_SSH_PREFIX" ]; then
+        # Example prefix: ssh://user@host:port/path
+        _auth_part=$(echo "$WALG_SSH_PREFIX" | sed -n 's|ssh://\([^/]*\)/.*|\1|p')
+        _user_part=$(echo "$_auth_part" | sed -n 's|^\([^@]*\)@.*|\1|p')
+        if [ -n "$_user_part" ] && [ "$_user_part" != "$WALG_SSH_PREFIX" ]; then
+            export SSH_USERNAME="$_user_part"
+        fi
+        # Extract port if present
+        _port_part=$(echo "$_auth_part" | sed -n 's|.*:\([0-9][0-9]*\)$|\1|p')
+        # Port selection precedence:
+        # 1. Explicit port in WALG_SSH_PREFIX
+        # 2. Pre-set SSH_PORT environment variable (from docker-compose or .env)
+        # 3. Legacy WALG_SSH_PORT variable (still honored if provided)
+        # 4. Default 22
+        if [ -n "$_port_part" ]; then
+            SSH_PORT="$_port_part"
+        elif [ -n "${SSH_PORT:-}" ]; then
+            : # keep existing value
+        elif [ -n "${WALG_SSH_PORT:-}" ]; then
+            SSH_PORT="$WALG_SSH_PORT"
+        else
+            SSH_PORT="22"
+        fi
+        export SSH_PORT
+    fi
+
+    # Provide private key path under both variable names
+    if [ -n "${WALG_SSH_PRIVATE_KEY_PATH:-}" ]; then
+        export SSH_PRIVATE_KEY_PATH="$WALG_SSH_PRIVATE_KEY_PATH"
+    fi
+
     # Create environment file for postgres user
     cat > /var/lib/postgresql/.walg_env << EOF
 export PATH="/usr/local/bin:\$PATH"
+export PGDATA="${PGDATA:-/var/lib/postgresql/data}"
+export PGHOST="${PGHOST:-postgres}"
+export PGPORT="${PGPORT:-5432}"
+export PGUSER="${PGUSER:-${POSTGRES_USER:-postgres}}"
+export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-postgres}}"
+export PGDATABASE="${PGDATABASE:-postgres}"
 export WALG_SSH_PREFIX="${WALG_SSH_PREFIX}"
 export WALG_SSH_PRIVATE_KEY_PATH="${WALG_SSH_PRIVATE_KEY_PATH:-}"
+export SSH_PRIVATE_KEY_PATH="${SSH_PRIVATE_KEY_PATH:-}"
+export SSH_PORT="${SSH_PORT:-22}"
+export SSH_USERNAME="${SSH_USERNAME:-}"
+export WALE_SSH_PREFIX="${WALG_SSH_PREFIX}"  # backward compatibility for any tooling expecting WALE_ prefix
 export WALG_COMPRESSION_METHOD="${WALG_COMPRESSION_METHOD:-lz4}"
 export WALG_DELTA_MAX_STEPS="${WALG_DELTA_MAX_STEPS:-7}"
 export WALG_DELTA_ORIGIN="${WALG_DELTA_ORIGIN:-LATEST}"
@@ -113,7 +160,16 @@ EOF
 }
 
 # Main execution
+# NOTE: Order matters. We must prepare the SSH key BEFORE writing the .walg_env file
+# so that WALG_SSH_PRIVATE_KEY_PATH is populated correctly when postgres sources it
+# inside archive_command. Previously validate_walg_env ran first, producing an env
+# file with an empty/incorrect WALG_SSH_PRIVATE_KEY_PATH causing wal-g wal-push to
+# fail (exit code 1) during archive_command execution.
 if [ "$BACKUP_MODE" = "wal" ]; then
+    # Prepare key first; ignore failure here so validate can report meaningful error
+    if ! prepare_ssh_key; then
+        echo "Warning: prepare_ssh_key reported an issue (missing key?) continuing to validation" >&2
+    fi
+    # Now write env file with the (possibly updated) WALG_SSH_PRIVATE_KEY_PATH
     validate_walg_env
-    prepare_ssh_key
 fi

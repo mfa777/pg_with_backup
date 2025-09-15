@@ -48,8 +48,15 @@ sed -i 's/^POSTGRES_DOCKERFILE=.*/POSTGRES_DOCKERFILE=Dockerfile.postgres-walg/'
 # Set backup volume mode to read-only
 sed -i 's/^BACKUP_VOLUME_MODE=.*/BACKUP_VOLUME_MODE=ro/' "$ENV_FILE" || echo "BACKUP_VOLUME_MODE=ro" >> "$ENV_FILE"
 
-# Configure SSH prefix for local server
-sed -i 's|^WALG_SSH_PREFIX=.*|WALG_SSH_PREFIX=ssh://walg@ssh-server:2222/backups|' "$ENV_FILE"
+# Configure SSH prefix for local server (omit port; we set SSH_PORT separately so wal-g picks up non-default port)
+sed -i 's|^WALG_SSH_PREFIX=.*|WALG_SSH_PREFIX=ssh://walg@ssh-server/backups|' "$ENV_FILE"
+
+# Explicit SSH port variable (wal-g expects SSH_PORT)
+if grep -q '^SSH_PORT=' "$ENV_FILE"; then
+    sed -i 's|^SSH_PORT=.*|SSH_PORT=2222|' "$ENV_FILE"
+else
+    echo 'SSH_PORT=2222' >> "$ENV_FILE"
+fi
 
 # Set SSH key path
 sed -i "s|^SSH_KEY_PATH=.*|SSH_KEY_PATH=$SSH_KEY_DIR|" "$ENV_FILE"

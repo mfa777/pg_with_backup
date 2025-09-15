@@ -15,21 +15,38 @@ RUN apk add --no-cache \
     tzdata \
     ca-certificates \
     lz4 \
-    openssh-client && \
+    openssh-client \
+    gcompat && \
     rm -rf /var/cache/apk/*
 
-# Download and install wal-g (use static binary to avoid glibc issues)
+# Download and install wal-g (use Ubuntu build with glibc compatibility)
 ARG WALG_VERSION=v2.0.1
-RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz \
-    && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin \
-    && if [ -f /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 ]; then \
+RUN set -eux; \
+    apk add --no-cache --virtual .build-deps curl tar wget; \
+    echo "Downloading wal-g version ${WALG_VERSION}..."; \
+    wget --no-check-certificate -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz"; \
+    echo "Extracting wal-g..."; \
+    cd /tmp && tar -tzf wal-g.tar.gz; \
+    tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin; \
+    ls -la /usr/local/bin/wal-g* || echo "No wal-g found after extraction"; \
+    # Rename the extracted binary to just 'wal-g' \
+    if [ -f /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 ]; then \
         mv /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 /usr/local/bin/wal-g; \
         chmod +x /usr/local/bin/wal-g; \
+        echo "wal-g installed successfully"; \
+        # Test the binary with gcompat \
+        if /usr/local/bin/wal-g --version >/dev/null 2>&1; then \
+            echo "wal-g binary test successful"; \
+        else \
+            echo "WARNING: wal-g binary test failed but continuing"; \
+        fi; \
     else \
-        echo "Warning: wal-g binary not found after extraction"; \
-    fi \
-    && rm -f /tmp/wal-g.tar.gz \
-    || echo "Warning: wal-g download failed, but continuing for SQL mode compatibility"
+        echo "ERROR: wal-g binary not found after extraction"; \
+        find /usr/local/bin -name '*wal*' -type f || echo "No wal-g files found"; \
+        exit 1; \
+    fi; \
+    rm -f /tmp/wal-g.tar.gz; \
+    apk del .build-deps
 
 # Create directories
 RUN mkdir -p /config/rclone /tmp/backups /var/lib/backup/state /var/log \

@@ -118,14 +118,30 @@ test_remote_connectivity() {
 
 # Get current backup count
 get_backup_count() {
-    docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g backup-list 2>/dev/null | grep -c '^' || echo '0'" 2>/dev/null || echo "0"
+    # Run wal-g backup-list inside the postgres container as the postgres user
+    # Source the prepared WAL-G env file so credentials/config are available.
+    local out
+    out=$(docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g backup-list 2>/dev/null | wc -l'" 2>/dev/null || true)
+    out=$(echo "${out:-0}" | tr -d '[:space:]')
+    if [[ -z "$out" ]] || ! [[ "$out" =~ ^[0-9]+$ ]]; then
+        echo 0
+    else
+        echo "$out"
+    fi
 }
 
 # Get WAL files count in remote storage
 get_remote_wal_count() {
     # wal-g stores WAL files in subdirectories like wal_005/
     # Look for compressed WAL files in the entire backup directory structure
-    docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f \( -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' \) 2>/dev/null | wc -l" 2>/dev/null || echo "0"
+    local out
+    out=$(docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f \( -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' \) 2>/dev/null | wc -l" 2>/dev/null || true)
+    out=$(echo "${out:-0}" | tr -d '[:space:]')
+    if [[ -z "$out" ]] || ! [[ "$out" =~ ^[0-9]+$ ]]; then
+        echo 0
+    else
+        echo "$out"
+    fi
 }
 
 # Test 1: Archive command wal-push functionality

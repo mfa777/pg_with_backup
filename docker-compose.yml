@@ -20,6 +20,9 @@ services:
       WALG_DELTA_ORIGIN: ${WALG_DELTA_ORIGIN:-LATEST}
       WALG_LOG_LEVEL: ${WALG_LOG_LEVEL:-DEVEL}
       SKIP_SSH_KEYSCAN: ${SKIP_SSH_KEYSCAN:-0}
+      # Explicit SSH variables recognized by wal-g (v3) CLI
+      SSH_PORT: "${SSH_PORT:-}"
+      SSH_USERNAME: "${SSH_USERNAME:-}"
     volumes:
       - pg_data:/var/lib/postgresql/data
       # Conditionally mount SSH key (create empty file if not exists)
@@ -36,6 +39,8 @@ services:
     volumes:
       # Dedicated volume for backup state (no dependency on pg_data for SQL mode)
       - backup_state:/var/lib/backup:rw
+      # Mount postgres data for wal-g mode backups
+      - pg_data:/var/lib/postgresql/data:rw
       # Mount SSH key for wal-g mode
       - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
     depends_on:

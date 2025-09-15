@@ -4,6 +4,14 @@ set -eo pipefail
 # wal-g runner script for base backups and cleanup
 # Usage: wal-g-runner.sh [backup|clean|combo]
 
+# Source wal-g environment
+if [ -f "/var/lib/postgresql/.walg_env" ]; then
+    source "/var/lib/postgresql/.walg_env"
+else
+    echo "ERROR: wal-g environment file not found at /var/lib/postgresql/.walg_env"
+    exit 1
+fi
+
 SCRIPT_NAME="wal-g-runner"
 PGDATA="/var/lib/postgresql/data"
 LOCK_DIR="$PGDATA/walg_locks"
