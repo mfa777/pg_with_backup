@@ -52,8 +52,8 @@ WALG_DELTA_MAX_STEPS=7
 # Delta backup origin
 WALG_DELTA_ORIGIN=LATEST
 
-# Log level for wal-g
-WALG_LOG_LEVEL=INFO
+# Log level for wal-g (NORMAL or DEVEL)
+WALG_LOG_LEVEL=DEVEL
 
 # Retention policy: number of full backups to keep
 WALG_RETENTION_FULL=7
