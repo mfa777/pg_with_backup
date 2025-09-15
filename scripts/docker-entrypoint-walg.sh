@@ -12,17 +12,39 @@ if [ "$BACKUP_MODE" = "wal" ]; then
     source /opt/walg/scripts/walg-env-prepare.sh
     
     # Ensure postgresql.conf has the right settings for wal-g
-    # Only copy the template into PGDATA after the database cluster has been
-    # initialized. Copying into PGDATA before initdb runs makes the directory
-    # non-empty and prevents initdb from creating the cluster.
+    # Create a robust configuration setup that works regardless of initialization state
     if [ -f "$PGDATA/PG_VERSION" ]; then
-        if [ ! -f "$PGDATA/postgresql.conf" ] && [ -f "/etc/postgresql/postgresql.conf.template" ]; then
-            echo "Database already initialized; copying postgresql.conf template for wal-g mode..."
+        # Database already initialized - apply configuration immediately
+        if [ -f "/etc/postgresql/postgresql.conf.template" ]; then
+            echo "Database already initialized; applying WAL-G postgresql.conf template..."
             cp /etc/postgresql/postgresql.conf.template "$PGDATA/postgresql.conf"
             chown postgres:postgres "$PGDATA/postgresql.conf"
+            echo "WAL-G configuration applied to existing database"
         fi
     else
-        echo "PGDATA not initialized yet; deferring postgresql.conf copy until after initdb"
+        echo "PGDATA not initialized yet; setting up post-init configuration application"
+        # Ensure the initdb hook directory exists
+        mkdir -p /docker-entrypoint-initdb.d
+        
+        # Create a more robust post-init script
+        cat > /docker-entrypoint-initdb.d/99-apply-walg-config.sh << 'EOF'
+#!/bin/bash
+echo "Post-init: Applying WAL-G postgresql.conf configuration..."
+if [ -f "/etc/postgresql/postgresql.conf.template" ]; then
+    # Apply the WAL-G configuration template
+    cp /etc/postgresql/postgresql.conf.template "$PGDATA/postgresql.conf"
+    chown postgres:postgres "$PGDATA/postgresql.conf"
+    echo "WAL-G configuration template applied successfully"
+    
+    # Ensure WAL archiving settings are correct
+    echo "Verifying WAL-G configuration..."
+    grep -E "(archive_mode|archive_command|wal_level)" "$PGDATA/postgresql.conf" || echo "Warning: Some WAL-G settings may be missing"
+else
+    echo "Warning: WAL-G configuration template not found at /etc/postgresql/postgresql.conf.template"
+fi
+EOF
+        chmod +x /docker-entrypoint-initdb.d/99-apply-walg-config.sh
+        echo "Post-init WAL-G configuration script created"
     fi
     
     echo "WAL-G environment prepared successfully"

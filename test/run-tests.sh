@@ -32,6 +32,14 @@ fi
 
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-postgres}"
+# Load environment from .env file if it exists
+if [[ -f "$ENV_FILE" ]]; then
+  # Export variables from .env file to make them available to the test script
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
+
 BACKUP_MODE="${BACKUP_MODE:-sql}"
 
 echof() { printf "%s\n" "$*"; }
@@ -118,7 +126,11 @@ while true; do
 done
 pass "postgres is accepting connections"
 
-# Now start other services to avoid data-volume races
+# Refresh collation versions to avoid mismatch warnings/errors
+echof "== Refreshing database collation versions =="
+docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE postgres REFRESH COLLATION VERSION;" || true
+docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE template1 REFRESH COLLATION VERSION;" || true
+pass "Collation versions refreshed"
 if [[ "${START_OTHER_SERVICES_AFTER_POSTGRES:-0}" == "1" ]]; then
   echof "== Starting backup and pgadmin services after postgres readiness"
   $COMPOSE_CMD up -d "$BACKUP_SERVICE_NAME" pgadmin || true
@@ -147,6 +159,10 @@ if [[ -n "$NEW_CONTAINER_ID" && "$NEW_CONTAINER_ID" != "$CONTAINER_ID" ]]; then
     sleep 1
   done
   pass "recreated postgres is accepting connections"
+  # Refresh collation versions for recreated container
+  docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE postgres REFRESH COLLATION VERSION;" || true
+  docker exec "$CONTAINER_ID" psql -U "$POSTGRES_USER" -c "ALTER DATABASE template1 REFRESH COLLATION VERSION;" || true
+# Close the recreated-container if block
 fi
 
 # Check backup service existence
@@ -281,6 +297,28 @@ if [[ "$BACKUP_MODE" == "wal" ]]; then
     else
       skip "wal-g backup-list failed to run cleanly (likely no remote configured) — SKIPPING network tests"
     fi
+  fi
+
+  # Run comprehensive WAL-G functionality tests
+  echof "== Running WAL-G specific functionality tests =="
+  if [ -f "$REPO_DIR/test/test-walg-functions.sh" ]; then
+    # Source the test functions and run them
+    source "$REPO_DIR/test/test-walg-functions.sh"
+    
+    # Set the container IDs for the walg test functions  
+    CONTAINER_ID="$CONTAINER_ID"
+    BACKUP_CONTAINER_ID="$BACKUP_CONTAINER_ID"
+    
+    # Run the specific tests
+    test_archive_command_wal_push
+    echo ""
+    test_backup_push
+    echo ""
+    test_delete_functionality
+    
+    pass "WAL-G functionality tests completed"
+  else
+    skip "WAL-G functionality test script not found"
   fi
 else
   # SQL mode checks

@@ -18,11 +18,8 @@ services:
       WALG_COMPRESSION_METHOD: ${WALG_COMPRESSION_METHOD:-lz4}
       WALG_DELTA_MAX_STEPS: ${WALG_DELTA_MAX_STEPS:-7}
       WALG_DELTA_ORIGIN: ${WALG_DELTA_ORIGIN:-LATEST}
-      WALG_LOG_LEVEL: ${WALG_LOG_LEVEL:-DEVEL}
+      WALG_LOG_LEVEL: ${WALG_LOG_LEVEL:-INFO}
       SKIP_SSH_KEYSCAN: ${SKIP_SSH_KEYSCAN:-0}
-      # Explicit SSH variables recognized by wal-g (v3) CLI
-      SSH_PORT: "${SSH_PORT:-}"
-      SSH_USERNAME: "${SSH_USERNAME:-}"
     volumes:
       - pg_data:/var/lib/postgresql/data
       # Conditionally mount SSH key (create empty file if not exists)
@@ -33,14 +30,12 @@ services:
   backup:
     build:
       context: .
-      dockerfile: ${BACKUP_DOCKERFILE:-Dockerfile.backup}
+      dockerfile: Dockerfile.backup
     restart: unless-stopped
     env_file: .env
     volumes:
       # Dedicated volume for backup state (no dependency on pg_data for SQL mode)
       - backup_state:/var/lib/backup:rw
-      # Mount postgres data for wal-g mode backups
-      - pg_data:/var/lib/postgresql/data:rw
       # Mount SSH key for wal-g mode
       - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
     depends_on:
@@ -92,18 +87,17 @@ services:
 
 volumes:
   pg_data:
-    name: postgres-data # Named volume for clarity
-    external: true
+    name: postgres-data  # Named volume for clarity
   backup_state:
     name: backup-state # Named volume for backup service state
   pgadmin_data:
-    name: pgadmin-data # Named volume for pgAdmin data
+    name: pgadmin-data  # Named volume for pgAdmin data
   ssh_data:
-    name: ssh-server-data # Named volume for SSH server configuration
+    name: ssh-server-data  # Named volume for SSH server configuration
   ssh_backups:
-    name: ssh-backups # Named volume for SSH server backup storage
+    name: ssh-backups  # Named volume for SSH server backup storage
 
 networks:
   pg_network:
     driver: bridge
-    name: postgres-network # More standard naming
+    name: postgres-network  # More standard naming

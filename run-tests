@@ -35,19 +35,39 @@ run_sql_mode() {
 
 run_wal_mode() {
 	echo "Running tests in WAL (wal-g) backup mode..."
-	# Ensure we have a local SSH key for the test (do not overwrite existing keys)
-	mkdir -p "$SCRIPT_DIR/secrets/walg_ssh_key"
-	if [[ ! -f "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa" ]]; then
-		echo "Generating temporary SSH key for wal-g tests at secrets/walg_ssh_key/id_rsa"
-		ssh-keygen -t rsa -b 2048 -f "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa" -N "" -q
-		chmod 600 "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa"
-		chmod 644 "$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa.pub"
+	
+	# Step 1: Setup local SSH server and configure environment  
+	echo "Setting up local SSH server and environment..."
+	"$SCRIPT_DIR/scripts/setup-local-ssh.sh"
+	echo "SSH server setup completed."
+	
+	# Step 2: Clean up any existing containers and volumes to avoid conflicts
+	# echo "Cleaning up any existing containers and volumes..."
+	# docker compose --profile ssh-testing down -v 2>/dev/null || true
+	# if docker volume ls --format '{{.Name}}' | grep -q '^postgres-data$'; then
+	# 	docker volume rm postgres-data 2>/dev/null || true
+	# 	echo "Removed existing postgres-data volume"
+	# fi
+	
+	# Step 3: Start the stack with SSH server using temporary containers
+	#echo "Starting stack with SSH server for testing..."
+	#docker compose --profile ssh-testing up --build -d
+	#echo "Docker stack started with SSH testing profile."
+	
+	# Step 4: Run comprehensive E2E tests
+	echo "Running comprehensive WAL-G E2E tests..."
+	if [[ -f "$SCRIPT_DIR/test/test-walg-e2e.sh" ]]; then
+		FORCE_EMPTY_PGDATA=1 CLEANUP=1 "$SCRIPT_DIR/test/test-walg-e2e.sh" "$@"
 	else
-		echo "Using existing key at secrets/walg_ssh_key/id_rsa"
+		echo "WAL-G E2E test script not found, falling back to basic tests..."
+		# Fallback to basic test runner with wal-g specific settings
+		FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 "$TEST_SCRIPT" "$@"
 	fi
-
-	# Recommended env set: empty pgdata to avoid pre-populated image data, skip network ssh-keyscan to avoid external network, cleanup afterwards
-	FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 "$TEST_SCRIPT" "$@"
+	
+	# Step 5: Clean up test environment (volumes and containers)
+	echo "Cleaning up test environment..."
+	docker compose --profile ssh-testing down -v
+	echo "Test environment cleaned up."
 }
 
 case "$BACKUP_MODE" in

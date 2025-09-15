@@ -32,8 +32,11 @@ SQL_BACKUP_RETAIN_DAYS=30
 
 # --- WAL Mode Configuration (wal-g over SSH) ---
 # These are used when BACKUP_MODE=wal
-# SSH remote path for wal-g (e.g., ssh://walg@backup-host:22/var/backups/pg/prod)
-WALG_SSH_PREFIX=ssh://walg@your-backup-host:22/absolute/path/to/backup/directory
+# SSH remote path for wal-g (omit port; set WALG_SSH_PORT below to avoid double-port parsing issues)
+WALG_SSH_PREFIX=ssh://walg@your-backup-host/absolute/path/to/backup/directory
+
+# SSH port for wal-g backend (if not standard 22)
+SSH_PORT=22
 
 # SSH private key for authentication (base64 encoded)
 # Run: cat ~/.ssh/id_walg | base64 -w0
@@ -52,8 +55,8 @@ WALG_DELTA_MAX_STEPS=7
 # Delta backup origin
 WALG_DELTA_ORIGIN=LATEST
 
-# Log level for wal-g
-WALG_LOG_LEVEL=INFO
+# Log level for wal-g (NORMAL or DEVEL)
+WALG_LOG_LEVEL=DEVEL
 
 # Retention policy: number of full backups to keep
 WALG_RETENTION_FULL=7
@@ -66,6 +69,17 @@ WALG_BASEBACKUP_CRON="30 1 * * *"
 
 # Cron schedule for cleanup (when BACKUP_MODE=wal)
 WALG_CLEAN_CRON="15 3 * * *"
+
+# --- Local SSH Server for Testing (Optional) ---
+# Set to 1 to enable local SSH server for wal-g testing
+ENABLE_SSH_SERVER=0
+
+# SSH user for the local test server  
+SSH_USER=walg
+
+# Local SSH server configuration for testing wal-g
+# When using local SSH server, this replaces WALG_SSH_PREFIX (port provided via WALG_SSH_PORT)
+WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server/backups
 
 # --- Telegram Notifications (Optional) ---
 TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE

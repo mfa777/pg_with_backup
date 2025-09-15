@@ -14,7 +14,7 @@ work_mem = 4MB
 # WAL settings for wal-g
 wal_level = replica
 archive_mode = on
-archive_command = 'wal-g wal-push %p'
+archive_command = 'bash -c "source /var/lib/postgresql/.walg_env 2>/dev/null || true; wal-g wal-push %p"'
 archive_timeout = 60s
 wal_compression = on
 max_wal_size = 2GB

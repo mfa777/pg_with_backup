@@ -1,0 +1,514 @@
+Running tests in WAL (wal-g) backup mode...
+Setting up local SSH server and environment...
+PASS: SSH key pair already exists: /home/super/projects/pg_with_backup/secrets/walg_ssh_key/id_rsa
+== Updating .env file for local SSH server testing ==
+PASS: Updated .env file for local SSH server testing
+== Setup complete! ==
+
+Next steps:
+1. Start the stack with SSH server: docker compose --profile ssh-testing up --build -d
+2. Run E2E tests: ./test/test-walg-e2e.sh
+3. Monitor logs: docker compose logs -f postgres backup ssh-server
+
+To reset: docker compose --profile ssh-testing down -v
+SSH server setup completed.
+Running comprehensive WAL-G E2E tests...
+== Starting WAL-G End-to-End Testing ==
+== == FORCE_EMPTY_PGDATA=1: removing postgres-data volume and any previous compose state ==
+postgres-data
+PASS: postgres-data volume removed
+== == Preparing an empty postgres-data volume to avoid image population ==
+total 8
+drwxr-xr-x    2 root     root          4096 Sep 15 08:11 .
+drwxr-xr-x    1 root     root          4096 Sep 15 08:11 ..
+PASS: postgres-data prepared and emptied
+== Restarting stack after volume cleanup ==
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.01kB done
+#1 DONE 0.0s
+
+#2 [postgres internal] load build definition from Dockerfile.postgres-walg
+#2 transferring dockerfile: 44B
+#2 transferring dockerfile: 2.72kB done
+#2 DONE 0.0s
+
+#3 [backup internal] load build definition from Dockerfile.backup
+#3 transferring dockerfile: 1.66kB done
+#3 DONE 0.1s
+
+#4 [backup internal] load metadata for docker.io/library/alpine:3.21
+#4 DONE 0.0s
+
+#5 [auth] library/postgres:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [backup internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [postgres internal] load metadata for docker.io/library/postgres:17
+#7 ...
+
+#8 [backup 1/9] FROM docker.io/library/alpine:3.21
+#8 DONE 0.0s
+
+#9 [backup internal] load build context
+#9 transferring context: 15.97kB done
+#9 DONE 0.0s
+
+#10 [backup 4/9] RUN mkdir -p /config/rclone /tmp/backups /var/lib/backup/state /var/log     && mkdir -p /opt/walg/scripts
+#10 CACHED
+
+#11 [backup 2/9] RUN apk add --no-cache     bash     postgresql17-client     curl     rclone     age     tzdata     ca-certificates     lz4     openssh-client &&     rm -rf /var/cache/apk/*
+#11 CACHED
+
+#12 [backup 3/9] RUN curl -L -o /tmp/wal-g.tar.gz https://github.com/wal-g/wal-g/releases/download/v2.0.1/wal-g-pg-ubuntu-20.04-amd64.tar.gz     && tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin     && if [ -f /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 ]; then         mv /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 /usr/local/bin/wal-g;         chmod +x /usr/local/bin/wal-g;     else         echo "Warning: wal-g binary not found after extraction";     fi     && rm -f /tmp/wal-g.tar.gz     || echo "Warning: wal-g download failed, but continuing for SQL mode compatibility"
+#12 CACHED
+
+#13 [backup 5/9] COPY backup.sh /usr/local/bin/backup.sh
+#13 CACHED
+
+#14 [backup 6/9] COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+#14 CACHED
+
+#15 [backup 7/9] COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+#15 DONE 0.1s
+
+#16 [backup 8/9] COPY entrypoint-backup.sh /entrypoint.sh
+#16 DONE 0.1s
+
+#7 [postgres internal] load metadata for docker.io/library/postgres:17
+#7 ...
+
+#17 [backup 9/9] RUN chmod +x /usr/local/bin/backup.sh /opt/walg/scripts/*.sh /entrypoint.sh
+#17 DONE 0.4s
+
+#18 [backup] exporting to image
+#18 exporting layers
+#18 exporting layers 0.2s done
+#18 writing image sha256:b099d79742d62ed44e22b57dc90a8d746a530aad14a50a4df9ca4512b5c1d940 done
+#18 naming to docker.io/library/pg_with_backup-backup 0.0s done
+#18 DONE 0.3s
+
+#7 [postgres internal] load metadata for docker.io/library/postgres:17
+#7 ...
+
+#19 [backup] resolving provenance for metadata file
+#19 DONE 0.0s
+
+#7 [postgres internal] load metadata for docker.io/library/postgres:17
+#7 DONE 2.5s
+
+#6 [postgres internal] load .dockerignore
+#6 CACHED
+
+#20 [postgres  1/10] FROM docker.io/library/postgres:17@sha256:feff5b24fedd610975a1f5e743c51a4b360437f4dc3a11acf740dcd708f413f6
+#20 DONE 0.0s
+
+#21 [postgres internal] load build context
+#21 transferring context: 3.73kB done
+#21 DONE 0.0s
+
+#22 [postgres  3/10] RUN set -eux;     echo "Downloading wal-g version v3.0.0...";     wget --no-check-certificate -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/v3.0.0/wal-g-pg-ubuntu-20.04-amd64.tar.gz";     echo "Extracting wal-g...";     cd /tmp && tar -tzf wal-g.tar.gz;     tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin;     ls -la /usr/local/bin/wal-g* || echo "No wal-g found after extraction";     if [ -f /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 ]; then         mv /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 /usr/local/bin/wal-g;         chmod +x /usr/local/bin/wal-g;         echo "wal-g installed successfully";     else         echo "ERROR: wal-g binary not found after extraction";         find /usr/local/bin -name '*wal*' -type f || echo "No wal-g files found";         exit 1;     fi;     rm -f /tmp/wal-g.tar.gz
+#22 CACHED
+
+#23 [postgres  5/10] COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template
+#23 CACHED
+
+#24 [postgres  2/10] RUN apt-get update && apt-get install -y --no-install-recommends     curl     ca-certificates     lz4     brotli     zstd     openssh-client     procps     wget     gnupg     git     build-essential     && rm -rf /var/lib/apt/lists/*
+#24 CACHED
+
+#25 [postgres  4/10] RUN mkdir -p /opt/walg/scripts     && mkdir -p /etc/postgresql     && mkdir -p /var/lib/postgresql/.ssh     && chown -R postgres:postgres /var/lib/postgresql/.ssh     && chmod 700 /var/lib/postgresql/.ssh
+#25 CACHED
+
+#26 [postgres  6/10] COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
+#26 CACHED
+
+#27 [postgres  7/10] COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+#27 DONE 0.1s
+
+#28 [postgres  8/10] COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
+#28 DONE 0.2s
+
+#29 [postgres  9/10] RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+#29 DONE 0.4s
+
+#30 [postgres 10/10] RUN set -eux;     if apt-get update && apt-get install -y --no-install-recommends postgresql-server-dev-17; then         git clone --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector;         cd /tmp/pgvector;         make && make install;         rm -rf /tmp/pgvector;     else         echo "Skipping pgvector build due to dependency issues";     fi;     rm -rf /var/lib/apt/lists/*
+#30 0.289 + apt-get update
+#30 0.772 Get:1 http://deb.debian.org/debian trixie InRelease [140 kB]
+#30 1.398 Get:2 http://apt.postgresql.org/pub/repos/apt trixie-pgdg InRelease [107 kB]
+#30 1.797 Get:3 http://apt.postgresql.org/pub/repos/apt trixie-pgdg/main amd64 Packages [339 kB]
+#30 1.994 Get:4 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+#30 2.610 Get:5 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+#30 2.618 Get:6 http://deb.debian.org/debian trixie/main amd64 Packages [9,669 kB]
+#30 3.798 Get:7 http://deb.debian.org/debian trixie-updates/main amd64 Packages [5,412 B]
+#30 3.801 Get:8 http://deb.debian.org/debian-security trixie-security/main amd64 Packages [40.2 kB]
+#30 4.529 Fetched 10.4 MB in 4s (2,490 kB/s)
+#30 4.529 Reading package lists...
+#30 5.125 + apt-get install -y --no-install-recommends postgresql-server-dev-17
+#30 5.151 Reading package lists...
+#30 5.741 Building dependency tree...
+#30 5.880 Reading state information...
+#30 6.105 The following additional packages will be installed:
+#30 6.105   clang-19 libclang-common-19-dev libclang-cpp19 libclang1-19 libffi-dev
+#30 6.105   libgc1 libncurses-dev libncurses6 libobjc-14-dev libobjc4 libpfm4 libpq-dev
+#30 6.105   libpython3-stdlib libpython3.13-minimal libpython3.13-stdlib libssl-dev
+#30 6.105   libxml2-dev libyaml-0-2 libz3-dev llvm-19 llvm-19-dev llvm-19-linker-tools
+#30 6.106   llvm-19-runtime llvm-19-tools media-types python3 python3-minimal
+#30 6.106   python3-pygments python3-yaml python3.13 python3.13-minimal
+#30 6.107 Suggested packages:
+#30 6.107   clang-19-doc wasi-libc ncurses-doc postgresql-doc-17 libssl-doc pkg-config
+#30 6.107   llvm-19-doc python3-doc python3-tk python3-venv python-pygments-doc
+#30 6.107   ttf-bitstream-vera python3.13-venv python3.13-doc binfmt-support
+#30 6.107 Recommended packages:
+#30 6.107   clang-tools-19 libclang-rt-19-dev libgpm2 binfmt-support | systemd
+#30 6.377 The following NEW packages will be installed:
+#30 6.377   clang-19 libclang-common-19-dev libclang-cpp19 libclang1-19 libffi-dev
+#30 6.377   libgc1 libncurses-dev libncurses6 libobjc-14-dev libobjc4 libpfm4 libpq-dev
+#30 6.378   libpython3-stdlib libpython3.13-minimal libpython3.13-stdlib libssl-dev
+#30 6.378   libxml2-dev libyaml-0-2 libz3-dev llvm-19 llvm-19-dev llvm-19-linker-tools
+#30 6.378   llvm-19-runtime llvm-19-tools media-types postgresql-server-dev-17 python3
+#30 6.378   python3-minimal python3-pygments python3-yaml python3.13 python3.13-minimal
+#30 6.422 0 upgraded, 32 newly installed, 0 to remove and 2 not upgraded.
+#30 6.422 Need to get 97.1 MB of archives.
+#30 6.422 After this operation, 629 MB of additional disk space will be used.
+#30 6.422 Get:1 http://deb.debian.org/debian trixie/main amd64 libpython3.13-minimal amd64 3.13.5-2 [862 kB]
+#30 6.445 Get:2 http://apt.postgresql.org/pub/repos/apt trixie-pgdg/main amd64 libpq-dev amd64 17.6-1.pgdg13+1 [150 kB]
+#30 6.473 Get:3 http://deb.debian.org/debian trixie/main amd64 python3.13-minimal amd64 3.13.5-2 [2,224 kB]
+#30 6.477 Get:4 http://apt.postgresql.org/pub/repos/apt trixie-pgdg/main amd64 postgresql-server-dev-17 amd64 17.6-1.pgdg13+1 [1,321 kB]
+#30 6.610 Get:5 http://deb.debian.org/debian trixie/main amd64 python3-minimal amd64 3.13.5-1 [27.2 kB]
+#30 6.616 Get:6 http://deb.debian.org/debian trixie/main amd64 media-types all 13.0.0 [29.3 kB]
+#30 6.618 Get:7 http://deb.debian.org/debian trixie/main amd64 libpython3.13-stdlib amd64 3.13.5-2 [1,956 kB]
+#30 6.722 Get:8 http://deb.debian.org/debian trixie/main amd64 python3.13 amd64 3.13.5-2 [757 kB]
+#30 6.755 Get:9 http://deb.debian.org/debian trixie/main amd64 libpython3-stdlib amd64 3.13.5-1 [10.2 kB]
+#30 6.756 Get:10 http://deb.debian.org/debian trixie/main amd64 python3 amd64 3.13.5-1 [28.2 kB]
+#30 6.757 Get:11 http://deb.debian.org/debian trixie/main amd64 libclang-cpp19 amd64 1:19.1.7-3+b1 [13.2 MB]
+#30 7.712 Get:12 http://deb.debian.org/debian trixie/main amd64 libgc1 amd64 1:8.2.8-1 [247 kB]
+#30 7.723 Get:13 http://deb.debian.org/debian trixie/main amd64 libobjc4 amd64 14.2.0-19 [43.3 kB]
+#30 7.727 Get:14 http://deb.debian.org/debian trixie/main amd64 libobjc-14-dev amd64 14.2.0-19 [173 kB]
+#30 7.732 Get:15 http://deb.debian.org/debian trixie/main amd64 libclang-common-19-dev amd64 1:19.1.7-3+b1 [740 kB]
+#30 7.773 Get:16 http://deb.debian.org/debian trixie/main amd64 llvm-19-linker-tools amd64 1:19.1.7-3+b1 [1,263 kB]
+#30 7.861 Get:17 http://deb.debian.org/debian trixie/main amd64 libclang1-19 amd64 1:19.1.7-3+b1 [7,623 kB]
+#30 8.339 Get:18 http://deb.debian.org/debian trixie/main amd64 clang-19 amd64 1:19.1.7-3+b1 [117 kB]
+#30 8.342 Get:19 http://deb.debian.org/debian trixie/main amd64 libffi-dev amd64 3.4.8-2 [61.1 kB]
+#30 8.344 Get:20 http://deb.debian.org/debian trixie/main amd64 libncurses6 amd64 6.5+20250216-2 [105 kB]
+#30 8.349 Get:21 http://deb.debian.org/debian trixie/main amd64 libncurses-dev amd64 6.5+20250216-2 [353 kB]
+#30 8.366 Get:22 http://deb.debian.org/debian trixie/main amd64 libpfm4 amd64 4.13.0+git99-gc5587f9-1 [371 kB]
+#30 8.379 Get:23 http://deb.debian.org/debian trixie/main amd64 libssl-dev amd64 3.5.1-1 [2,954 kB]
+#30 8.631 Get:24 http://deb.debian.org/debian trixie/main amd64 libxml2-dev amd64 2.12.7+dfsg+really2.9.14-2.1+deb13u1 [793 kB]
+#30 8.682 Get:25 http://deb.debian.org/debian trixie/main amd64 libyaml-0-2 amd64 0.2.5-2 [52.5 kB]
+#30 8.684 Get:26 http://deb.debian.org/debian trixie/main amd64 libz3-dev amd64 4.13.3-1 [107 kB]
+#30 8.689 Get:27 http://deb.debian.org/debian trixie/main amd64 llvm-19-runtime amd64 1:19.1.7-3+b1 [551 kB]
+#30 8.717 Get:28 http://deb.debian.org/debian trixie/main amd64 llvm-19 amd64 1:19.1.7-3+b1 [16.4 MB]
+#30 9.724 Get:29 http://deb.debian.org/debian trixie/main amd64 python3-pygments all 2.18.0+dfsg-2 [836 kB]
+#30 9.815 Get:30 http://deb.debian.org/debian trixie/main amd64 python3-yaml amd64 6.0.2-1+b2 [136 kB]
+#30 9.822 Get:31 http://deb.debian.org/debian trixie/main amd64 llvm-19-tools amd64 1:19.1.7-3+b1 [511 kB]
+#30 9.846 Get:32 http://deb.debian.org/debian trixie/main amd64 llvm-19-dev amd64 1:19.1.7-3+b1 [43.1 MB]
+#30 12.83 debconf: unable to initialize frontend: Dialog
+#30 12.83 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#30 12.83 debconf: falling back to frontend: Readline
+#30 12.83 debconf: unable to initialize frontend: Readline
+#30 12.83 debconf: (This frontend requires a controlling tty.)
+#30 12.83 debconf: falling back to frontend: Teletype
+#30 12.84 debconf: unable to initialize frontend: Teletype
+#30 12.84 debconf: (This frontend requires a controlling tty.)
+#30 12.84 debconf: falling back to frontend: Noninteractive
+#30 14.04 Fetched 97.1 MB in 6s (15.6 MB/s)
+#30 14.11 Selecting previously unselected package libpython3.13-minimal:amd64.
+#30 14.11 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 18760 files and directories currently installed.)
+#30 14.15 Preparing to unpack .../libpython3.13-minimal_3.13.5-2_amd64.deb ...
+#30 14.16 Unpacking libpython3.13-minimal:amd64 (3.13.5-2) ...
+#30 14.32 Selecting previously unselected package python3.13-minimal.
+#30 14.33 Preparing to unpack .../python3.13-minimal_3.13.5-2_amd64.deb ...
+#30 14.36 Unpacking python3.13-minimal (3.13.5-2) ...
+#30 14.58 Setting up libpython3.13-minimal:amd64 (3.13.5-2) ...
+#30 14.64 Setting up python3.13-minimal (3.13.5-2) ...
+#30 15.47 Selecting previously unselected package python3-minimal.
+#30 15.47 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 19085 files and directories currently installed.)
+#30 15.48 Preparing to unpack .../python3-minimal_3.13.5-1_amd64.deb ...
+#30 15.49 Unpacking python3-minimal (3.13.5-1) ...
+#30 15.57 Selecting previously unselected package media-types.
+#30 15.58 Preparing to unpack .../media-types_13.0.0_all.deb ...
+#30 15.59 Unpacking media-types (13.0.0) ...
+#30 15.71 Selecting previously unselected package libpython3.13-stdlib:amd64.
+#30 15.71 Preparing to unpack .../libpython3.13-stdlib_3.13.5-2_amd64.deb ...
+#30 15.73 Unpacking libpython3.13-stdlib:amd64 (3.13.5-2) ...
+#30 15.94 Selecting previously unselected package python3.13.
+#30 15.95 Preparing to unpack .../python3.13_3.13.5-2_amd64.deb ...
+#30 15.97 Unpacking python3.13 (3.13.5-2) ...
+#30 16.09 Selecting previously unselected package libpython3-stdlib:amd64.
+#30 16.10 Preparing to unpack .../libpython3-stdlib_3.13.5-1_amd64.deb ...
+#30 16.11 Unpacking libpython3-stdlib:amd64 (3.13.5-1) ...
+#30 16.24 Setting up python3-minimal (3.13.5-1) ...
+#30 16.54 Selecting previously unselected package python3.
+#30 16.54 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 19539 files and directories currently installed.)
+#30 16.58 Preparing to unpack .../00-python3_3.13.5-1_amd64.deb ...
+#30 16.59 Unpacking python3 (3.13.5-1) ...
+#30 16.70 Selecting previously unselected package libclang-cpp19.
+#30 16.71 Preparing to unpack .../01-libclang-cpp19_1%3a19.1.7-3+b1_amd64.deb ...
+#30 16.72 Unpacking libclang-cpp19 (1:19.1.7-3+b1) ...
+#30 17.15 Selecting previously unselected package libgc1:amd64.
+#30 17.16 Preparing to unpack .../02-libgc1_1%3a8.2.8-1_amd64.deb ...
+#30 17.17 Unpacking libgc1:amd64 (1:8.2.8-1) ...
+#30 17.31 Selecting previously unselected package libobjc4:amd64.
+#30 17.32 Preparing to unpack .../03-libobjc4_14.2.0-19_amd64.deb ...
+#30 17.33 Unpacking libobjc4:amd64 (14.2.0-19) ...
+#30 17.44 Selecting previously unselected package libobjc-14-dev:amd64.
+#30 17.45 Preparing to unpack .../04-libobjc-14-dev_14.2.0-19_amd64.deb ...
+#30 17.46 Unpacking libobjc-14-dev:amd64 (14.2.0-19) ...
+#30 17.59 Selecting previously unselected package libclang-common-19-dev:amd64.
+#30 17.60 Preparing to unpack .../05-libclang-common-19-dev_1%3a19.1.7-3+b1_amd64.deb ...
+#30 17.61 Unpacking libclang-common-19-dev:amd64 (1:19.1.7-3+b1) ...
+#30 17.80 Selecting previously unselected package llvm-19-linker-tools.
+#30 17.81 Preparing to unpack .../06-llvm-19-linker-tools_1%3a19.1.7-3+b1_amd64.deb ...
+#30 17.83 Unpacking llvm-19-linker-tools (1:19.1.7-3+b1) ...
+#30 18.15 Selecting previously unselected package libclang1-19.
+#30 18.16 Preparing to unpack .../07-libclang1-19_1%3a19.1.7-3+b1_amd64.deb ...
+#30 18.18 Unpacking libclang1-19 (1:19.1.7-3+b1) ...
+#30 18.61 Selecting previously unselected package clang-19.
+#30 18.62 Preparing to unpack .../08-clang-19_1%3a19.1.7-3+b1_amd64.deb ...
+#30 18.64 Unpacking clang-19 (1:19.1.7-3+b1) ...
+#30 18.74 Selecting previously unselected package libffi-dev:amd64.
+#30 18.75 Preparing to unpack .../09-libffi-dev_3.4.8-2_amd64.deb ...
+#30 18.77 Unpacking libffi-dev:amd64 (3.4.8-2) ...
+#30 18.91 Selecting previously unselected package libncurses6:amd64.
+#30 18.92 Preparing to unpack .../10-libncurses6_6.5+20250216-2_amd64.deb ...
+#30 18.93 Unpacking libncurses6:amd64 (6.5+20250216-2) ...
+#30 19.05 Selecting previously unselected package libncurses-dev:amd64.
+#30 19.06 Preparing to unpack .../11-libncurses-dev_6.5+20250216-2_amd64.deb ...
+#30 19.08 Unpacking libncurses-dev:amd64 (6.5+20250216-2) ...
+#30 19.24 Selecting previously unselected package libpfm4:amd64.
+#30 19.24 Preparing to unpack .../12-libpfm4_4.13.0+git99-gc5587f9-1_amd64.deb ...
+#30 19.25 Unpacking libpfm4:amd64 (4.13.0+git99-gc5587f9-1) ...
+#30 19.34 Selecting previously unselected package libssl-dev:amd64.
+#30 19.35 Preparing to unpack .../13-libssl-dev_3.5.1-1_amd64.deb ...
+#30 19.36 Unpacking libssl-dev:amd64 (3.5.1-1) ...
+#30 19.57 Selecting previously unselected package libpq-dev.
+#30 19.58 Preparing to unpack .../14-libpq-dev_17.6-1.pgdg13+1_amd64.deb ...
+#30 19.59 Unpacking libpq-dev (17.6-1.pgdg13+1) ...
+#30 19.70 Selecting previously unselected package libxml2-dev:amd64.
+#30 19.70 Preparing to unpack .../15-libxml2-dev_2.12.7+dfsg+really2.9.14-2.1+deb13u1_amd64.deb ...
+#30 19.72 Unpacking libxml2-dev:amd64 (2.12.7+dfsg+really2.9.14-2.1+deb13u1) ...
+#30 19.88 Selecting previously unselected package libyaml-0-2:amd64.
+#30 19.89 Preparing to unpack .../16-libyaml-0-2_0.2.5-2_amd64.deb ...
+#30 19.90 Unpacking libyaml-0-2:amd64 (0.2.5-2) ...
+#30 20.01 Selecting previously unselected package libz3-dev:amd64.
+#30 20.02 Preparing to unpack .../17-libz3-dev_4.13.3-1_amd64.deb ...
+#30 20.03 Unpacking libz3-dev:amd64 (4.13.3-1) ...
+#30 20.16 Selecting previously unselected package llvm-19-runtime.
+#30 20.17 Preparing to unpack .../18-llvm-19-runtime_1%3a19.1.7-3+b1_amd64.deb ...
+#30 20.18 Unpacking llvm-19-runtime (1:19.1.7-3+b1) ...
+#30 20.32 Selecting previously unselected package llvm-19.
+#30 20.33 Preparing to unpack .../19-llvm-19_1%3a19.1.7-3+b1_amd64.deb ...
+#30 20.34 Unpacking llvm-19 (1:19.1.7-3+b1) ...
+#30 20.85 Selecting previously unselected package python3-pygments.
+#30 20.86 Preparing to unpack .../20-python3-pygments_2.18.0+dfsg-2_all.deb ...
+#30 20.88 Unpacking python3-pygments (2.18.0+dfsg-2) ...
+#30 21.06 Selecting previously unselected package python3-yaml.
+#30 21.07 Preparing to unpack .../21-python3-yaml_6.0.2-1+b2_amd64.deb ...
+#30 21.09 Unpacking python3-yaml (6.0.2-1+b2) ...
+#30 21.18 Selecting previously unselected package llvm-19-tools.
+#30 21.18 Preparing to unpack .../22-llvm-19-tools_1%3a19.1.7-3+b1_amd64.deb ...
+#30 21.20 Unpacking llvm-19-tools (1:19.1.7-3+b1) ...
+#30 21.36 Selecting previously unselected package llvm-19-dev.
+#30 21.37 Preparing to unpack .../23-llvm-19-dev_1%3a19.1.7-3+b1_amd64.deb ...
+#30 21.38 Unpacking llvm-19-dev (1:19.1.7-3+b1) ...
+#30 22.52 Selecting previously unselected package postgresql-server-dev-17.
+#30 22.53 Preparing to unpack .../24-postgresql-server-dev-17_17.6-1.pgdg13+1_amd64.deb ...
+#30 22.54 Unpacking postgresql-server-dev-17 (17.6-1.pgdg13+1) ...
+#30 22.78 Setting up media-types (13.0.0) ...
+#30 22.83 Setting up libz3-dev:amd64 (4.13.3-1) ...
+#30 22.86 Setting up libclang1-19 (1:19.1.7-3+b1) ...
+#30 22.90 Setting up libclang-common-19-dev:amd64 (1:19.1.7-3+b1) ...
+#30 22.94 Setting up libyaml-0-2:amd64 (0.2.5-2) ...
+#30 22.98 Setting up libffi-dev:amd64 (3.4.8-2) ...
+#30 23.02 Setting up libxml2-dev:amd64 (2.12.7+dfsg+really2.9.14-2.1+deb13u1) ...
+#30 23.06 Setting up libpfm4:amd64 (4.13.0+git99-gc5587f9-1) ...
+#30 23.10 Setting up libncurses6:amd64 (6.5+20250216-2) ...
+#30 23.14 Setting up libssl-dev:amd64 (3.5.1-1) ...
+#30 23.18 Setting up libgc1:amd64 (1:8.2.8-1) ...
+#30 23.22 Setting up llvm-19-linker-tools (1:19.1.7-3+b1) ...
+#30 23.26 Setting up llvm-19-runtime (1:19.1.7-3+b1) ...
+#30 23.30 Setting up libpython3.13-stdlib:amd64 (3.13.5-2) ...
+#30 23.34 Setting up libpython3-stdlib:amd64 (3.13.5-1) ...
+#30 23.38 Setting up libclang-cpp19 (1:19.1.7-3+b1) ...
+#30 23.41 Setting up libncurses-dev:amd64 (6.5+20250216-2) ...
+#30 23.44 Setting up python3.13 (3.13.5-2) ...
+#30 24.30 Setting up libpq-dev (17.6-1.pgdg13+1) ...
+#30 24.33 Setting up libobjc4:amd64 (14.2.0-19) ...
+#30 24.37 Setting up python3 (3.13.5-1) ...
+#30 24.41 running python rtupdate hooks for python3.13...
+#30 24.41 running python post-rtupdate hooks for python3.13...
+#30 24.54 Setting up libobjc-14-dev:amd64 (14.2.0-19) ...
+#30 24.58 Setting up clang-19 (1:19.1.7-3+b1) ...
+#30 24.62 Setting up python3-pygments (2.18.0+dfsg-2) ...
+#30 25.29 Setting up llvm-19 (1:19.1.7-3+b1) ...
+#30 25.33 Setting up python3-yaml (6.0.2-1+b2) ...
+#30 25.52 Setting up llvm-19-tools (1:19.1.7-3+b1) ...
+#30 25.56 Setting up llvm-19-dev (1:19.1.7-3+b1) ...
+#30 25.60 Setting up postgresql-server-dev-17 (17.6-1.pgdg13+1) ...
+#30 25.64 Processing triggers for libc-bin (2.41-12) ...
+#30 25.71 Processing triggers for postgresql-common (281.pgdg130+1) ...
+#30 25.82 debconf: unable to initialize frontend: Dialog
+#30 25.82 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#30 25.82 debconf: falling back to frontend: Readline
+#30 25.83 debconf: unable to initialize frontend: Readline
+#30 25.83 debconf: (This frontend requires a controlling tty.)
+#30 25.83 debconf: falling back to frontend: Teletype
+#30 25.83 debconf: unable to initialize frontend: Teletype
+#30 25.83 debconf: (This frontend requires a controlling tty.)
+#30 25.83 debconf: falling back to frontend: Noninteractive
+#30 25.86 Building PostgreSQL dictionaries from installed myspell/hunspell packages...
+#30 25.86 Removing obsolete dictionary files:
+#30 26.00 + git clone --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector
+#30 26.00 Cloning into '/tmp/pgvector'...
+#30 28.46 + cd /tmp/pgvector
+#30 28.46 + make
+#30 28.51 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/bitutils.o src/bitutils.c
+#30 28.94 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/bitvec.o src/bitvec.c
+#30 29.00 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/halfutils.o src/halfutils.c
+#30 29.49 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/halfvec.o src/halfvec.c
+#30 30.33 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/hnsw.o src/hnsw.c
+#30 30.49 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/hnswbuild.o src/hnswbuild.c
+#30 30.85 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/hnswinsert.o src/hnswinsert.c
+#30 31.16 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/hnswscan.o src/hnswscan.c
+#30 31.34 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/hnswutils.o src/hnswutils.c
+#30 32.30 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/hnswvacuum.o src/hnswvacuum.c
+#30 32.59 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/ivfbuild.o src/ivfbuild.c
+#30 32.93 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/ivfflat.o src/ivfflat.c
+#30 33.14 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/ivfinsert.o src/ivfinsert.c
+#30 33.32 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/ivfkmeans.o src/ivfkmeans.c
+#30 34.12 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/ivfscan.o src/ivfscan.c
+#30 34.33 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/ivfutils.o src/ivfutils.c
+#30 34.88 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/ivfvacuum.o src/ivfvacuum.c
+#30 35.01 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/sparsevec.o src/sparsevec.c
+#30 35.91 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2   -c -o src/vector.o src/vector.c
+#30 36.96 gcc -Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Werror=vla -Wendif-labels -Wmissing-format-attribute -Wimplicit-fallthrough=3 -Wcast-function-type -Wshadow=compatible-local -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-format-truncation -Wno-stringop-truncation -g -g -O2 -Werror=implicit-function-declaration -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fno-omit-frame-pointer -march=native -ftree-vectorize -fassociative-math -fno-signed-zeros -fno-trapping-math -fPIC -fvisibility=hidden -shared -o vector.so src/bitutils.o src/bitvec.o src/halfutils.o src/halfvec.o src/hnsw.o src/hnswbuild.o src/hnswinsert.o src/hnswscan.o src/hnswutils.o src/hnswvacuum.o src/ivfbuild.o src/ivfflat.o src/ivfinsert.o src/ivfkmeans.o src/ivfscan.o src/ivfutils.o src/ivfvacuum.o src/sparsevec.o src/vector.o -L/usr/lib/x86_64-linux-gnu  -Wl,-z,relro -Wl,-z,now  -Wl,--as-needed -fvisibility=hidden 
+#30 37.00 cp sql/vector.sql sql/vector--0.8.1.sql
+#30 37.00 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/bitutils.bc src/bitutils.c
+#30 37.38 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/bitvec.bc src/bitvec.c
+#30 37.47 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/halfutils.bc src/halfutils.c
+#30 37.90 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/halfvec.bc src/halfvec.c
+#30 38.16 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/hnsw.bc src/hnsw.c
+#30 38.33 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/hnswbuild.bc src/hnswbuild.c
+#30 38.57 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/hnswinsert.bc src/hnswinsert.c
+#30 38.80 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/hnswscan.bc src/hnswscan.c
+#30 38.97 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/hnswutils.bc src/hnswutils.c
+#30 39.38 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/hnswvacuum.bc src/hnswvacuum.c
+#30 39.58 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/ivfbuild.bc src/ivfbuild.c
+#30 39.81 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/ivfflat.bc src/ivfflat.c
+#30 39.97 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/ivfinsert.bc src/ivfinsert.c
+#30 40.13 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/ivfkmeans.bc src/ivfkmeans.c
+#30 40.37 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/ivfscan.bc src/ivfscan.c
+#30 40.55 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/ivfutils.bc src/ivfutils.c
+#30 40.73 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/ivfvacuum.bc src/ivfvacuum.c
+#30 40.88 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/sparsevec.bc src/sparsevec.c
+#30 41.12 /usr/bin/clang-19 -Wno-ignored-attributes -fno-strict-aliasing -fwrapv -fexcess-precision=standard -Wno-unused-command-line-argument -Wno-compound-token-split-by-macro -Wno-format-truncation -O2  -I. -I./ -I/usr/include/postgresql/17/server -I/usr/include/postgresql/internal -Wdate-time -D_FORTIFY_SOURCE=2 -D_GNU_SOURCE  -I/usr/include/libxml2  -flto=thin -emit-llvm -c -o src/vector.bc src/vector.c
+#30 41.41 + make install
+#30 41.44 /bin/mkdir -p '/usr/lib/postgresql/17/lib'
+#30 41.44 /bin/mkdir -p '/usr/share/postgresql/17/extension'
+#30 41.45 /bin/mkdir -p '/usr/share/postgresql/17/extension'
+#30 41.45 /usr/bin/install -c -m 755  vector.so '/usr/lib/postgresql/17/lib/vector.so'
+#30 41.45 /usr/bin/install -c -m 644 .//vector.control '/usr/share/postgresql/17/extension/'
+#30 41.46 /usr/bin/install -c -m 644 .//sql/vector--0.1.0--0.1.1.sql .//sql/vector--0.1.1--0.1.3.sql .//sql/vector--0.1.3--0.1.4.sql .//sql/vector--0.1.4--0.1.5.sql .//sql/vector--0.1.5--0.1.6.sql .//sql/vector--0.1.6--0.1.7.sql .//sql/vector--0.1.7--0.1.8.sql .//sql/vector--0.1.8--0.2.0.sql .//sql/vector--0.2.0--0.2.1.sql .//sql/vector--0.2.1--0.2.2.sql .//sql/vector--0.2.2--0.2.3.sql .//sql/vector--0.2.3--0.2.4.sql .//sql/vector--0.2.4--0.2.5.sql .//sql/vector--0.2.5--0.2.6.sql .//sql/vector--0.2.6--0.2.7.sql .//sql/vector--0.2.7--0.3.0.sql .//sql/vector--0.3.0--0.3.1.sql .//sql/vector--0.3.1--0.3.2.sql .//sql/vector--0.3.2--0.4.0.sql .//sql/vector--0.4.0--0.4.1.sql .//sql/vector--0.4.1--0.4.2.sql .//sql/vector--0.4.2--0.4.3.sql .//sql/vector--0.4.3--0.4.4.sql .//sql/vector--0.4.4--0.5.0.sql .//sql/vector--0.5.0--0.5.1.sql .//sql/vector--0.5.1--0.6.0.sql .//sql/vector--0.6.0--0.6.1.sql .//sql/vector--0.6.1--0.6.2.sql .//sql/vector--0.6.2--0.7.0.sql .//sql/vector--0.7.0--0.7.1.sql .//sql/vector--0.7.1--0.7.2.sql .//sql/vector--0.7.2--0.7.3.sql .//sql/vector--0.7.3--0.7.4.sql .//sql/vector--0.7.4--0.8.0.sql .//sql/vector--0.8.0--0.8.1.sql sql/vector--0.8.1.sql '/usr/share/postgresql/17/extension/'
+#30 41.46 /bin/mkdir -p '/usr/include/postgresql/17/server/extension/vector/'
+#30 41.46 /usr/bin/install -c -m 644   .//src/halfvec.h .//src/sparsevec.h .//src/vector.h '/usr/include/postgresql/17/server/extension/vector/'
+#30 41.46 /bin/mkdir -p '/usr/lib/postgresql/17/lib/bitcode/vector'
+#30 41.47 /bin/mkdir -p '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.47 /usr/bin/install -c -m 644 src/bitutils.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.48 /usr/bin/install -c -m 644 src/bitvec.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.48 /usr/bin/install -c -m 644 src/halfutils.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.49 /usr/bin/install -c -m 644 src/halfvec.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.50 /usr/bin/install -c -m 644 src/hnsw.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.50 /usr/bin/install -c -m 644 src/hnswbuild.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.50 /usr/bin/install -c -m 644 src/hnswinsert.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.51 /usr/bin/install -c -m 644 src/hnswscan.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.51 /usr/bin/install -c -m 644 src/hnswutils.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.52 /usr/bin/install -c -m 644 src/hnswvacuum.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.53 /usr/bin/install -c -m 644 src/ivfbuild.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.53 /usr/bin/install -c -m 644 src/ivfflat.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.54 /usr/bin/install -c -m 644 src/ivfinsert.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.54 /usr/bin/install -c -m 644 src/ivfkmeans.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.54 /usr/bin/install -c -m 644 src/ivfscan.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.55 /usr/bin/install -c -m 644 src/ivfutils.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.56 /usr/bin/install -c -m 644 src/ivfvacuum.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.56 /usr/bin/install -c -m 644 src/sparsevec.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.57 /usr/bin/install -c -m 644 src/vector.bc '/usr/lib/postgresql/17/lib/bitcode'/vector/src/
+#30 41.57 cd '/usr/lib/postgresql/17/lib/bitcode' && /usr/lib/llvm-19/bin/llvm-lto -thinlto -thinlto-action=thinlink -o vector.index.bc vector/src/bitutils.bc vector/src/bitvec.bc vector/src/halfutils.bc vector/src/halfvec.bc vector/src/hnsw.bc vector/src/hnswbuild.bc vector/src/hnswinsert.bc vector/src/hnswscan.bc vector/src/hnswutils.bc vector/src/hnswvacuum.bc vector/src/ivfbuild.bc vector/src/ivfflat.bc vector/src/ivfinsert.bc vector/src/ivfkmeans.bc vector/src/ivfscan.bc vector/src/ivfutils.bc vector/src/ivfvacuum.bc vector/src/sparsevec.bc vector/src/vector.bc
+#30 41.62 + rm -rf /tmp/pgvector
+#30 41.63 + rm -rf /var/lib/apt/lists/apt.postgresql.org_pub_repos_apt_dists_trixie-pgdg_InRelease /var/lib/apt/lists/apt.postgresql.org_pub_repos_apt_dists_trixie-pgdg_main_binary-amd64_Packages.lz4 /var/lib/apt/lists/auxfiles /var/lib/apt/lists/deb.debian.org_debian-security_dists_trixie-security_InRelease /var/lib/apt/lists/deb.debian.org_debian-security_dists_trixie-security_main_binary-amd64_Packages.lz4 /var/lib/apt/lists/deb.debian.org_debian_dists_trixie-updates_InRelease /var/lib/apt/lists/deb.debian.org_debian_dists_trixie-updates_main_binary-amd64_Packages.lz4 /var/lib/apt/lists/deb.debian.org_debian_dists_trixie_InRelease /var/lib/apt/lists/deb.debian.org_debian_dists_trixie_main_binary-amd64_Packages.lz4 /var/lib/apt/lists/lock /var/lib/apt/lists/partial
+#30 DONE 41.7s
+
+#31 [postgres] exporting to image
+#31 exporting layers
+#31 exporting layers 2.5s done
+#31 writing image sha256:bfe282b1b3f0a1758861b97492125b1cc221b4155527632e14327595cc2a441b done
+#31 naming to docker.io/pgvector/pgvector:pg17 0.0s done
+#31 DONE 2.6s
+
+#32 [postgres] resolving provenance for metadata file
+#32 DONE 0.0s
+ pgvector/pgvector:pg17  Built
+ pg_with_backup-backup  Built
+ Network postgres-network  Creating
+ Network postgres-network  Created
+ Volume "ssh-backups"  Creating
+ Volume "ssh-backups"  Created
+ Volume "pgadmin-data"  Creating
+ Volume "pgadmin-data"  Created
+ Volume "backup-state"  Creating
+ Volume "backup-state"  Created
+ Volume "ssh-server-data"  Creating
+ Volume "ssh-server-data"  Created
+ Container postgres  Creating
+ Container ssh-server  Creating
+ Container postgres  Created
+ Container pg_with_backup-pgadmin-1  Creating
+ Container pg_with_backup-backup-1  Creating
+ Container ssh-server  Created
+ Container pg_with_backup-backup-1  Created
+ Container pg_with_backup-pgadmin-1  Created
+ Container postgres  Starting
+ Container ssh-server  Starting
+ Container postgres  Started
+ Container pg_with_backup-backup-1  Starting
+ Container pg_with_backup-pgadmin-1  Starting
+ Container ssh-server  Started
+ Container pg_with_backup-backup-1  Started
+ Container pg_with_backup-pgadmin-1  Started
+Container IDs:
+  - PostgreSQL: 20aaebf292ca672de546abd6701c54fddb90265494d5da496ed370bedf985844
+  - Backup: fbdd85a66a845b341a81835e2fad65f908c4d40d2c50af10928cfbe6525c863d
+  - SSH Server: c3a40782738401d3c147bcc356b83d0f85fad3f53e84f04779a57fa73a93c5d8
+
+== Waiting for services to be ready ==
+PASS: PostgreSQL is ready
+PASS: SSH server is ready
+Setting up backup directory permissions...
+PASS: Backup directory permissions configured
+== Testing remote SSH connectivity and wal-g configuration ==
+SSH connection successful
+PASS: SSH connectivity to remote server working
+PASS: wal-g backup-list command successful
+
+== Testing end-to-end WAL push functionality ==
+Initial WAL count in remote storage: 0
+Current remote directory structure:
+Generating WAL activity...
+Forcing WAL segment switch and archiving...
+Waiting for WAL archiving to complete...
+Final WAL count in remote storage: 2
+Files in remote storage after WAL activity:
+/backups/wal_005/000000010000000000000002.lz4
+/backups/wal_005/000000010000000000000001.lz4
+PASS: WAL files successfully pushed to remote storage (count: 0 -> 2)
+WARN: No explicit WAL push activity found in logs
+
+== Testing end-to-end backup-push functionality ==
+[2025-09-15T08:13:00+00:00] wal-g-runner starting (mode: backup)
+[2025-09-15T08:13:00+00:00] Validating wal-g environment...
+[2025-09-15T08:13:00+00:00] Environment validation passed
+[2025-09-15T08:13:00+00:00] Starting wal-g base backup...
+/opt/walg/scripts/wal-g-runner.sh: line 82: /usr/local/bin/wal-g: cannot execute: required file not found
+[2025-09-15T08:13:00+00:00] ERROR: Backup failed
+FAIL: Backup execution failed
