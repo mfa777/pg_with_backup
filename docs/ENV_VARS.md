@@ -16,7 +16,6 @@ This document summarizes all supported environment variables. It is generated/cu
 | SQL_BACKUP_RETAIN_DAYS | sql_mode | 30 | no | sql | Days to retain SQL dumps remotely |
 | BACKUP_CRON_SCHEDULE | sql_mode | 0 2 * * * | no | sql | Cron schedule for daily SQL dump |
 | WALG_SSH_PREFIX | wal_mode | (none) | when wal | wal | SSH storage URI `ssh://user@host[:port]/abs/path` |
-| WALG_SSH_PREFIX_LOCAL | testing | ssh://walg@ssh-server/backups | no | wal/testing | Local test override for WALG_SSH_PREFIX |
 | SSH_PORT | wal_mode | 22 | no | wal | SSH port (auto-detected from prefix if present) |
 | WALG_SSH_PRIVATE_KEY | wal_mode | (none) | no | wal | Base64 encoded private key (alternative to path) |
 | WALG_SSH_PRIVATE_KEY_PATH | wal_mode | /secrets/walg_ssh_key | no | wal | Mounted path to SSH private key |
@@ -29,8 +28,8 @@ This document summarizes all supported environment variables. It is generated/cu
 | WALG_RETENTION_DAYS | wal_mode | 30 | no | wal (planned) | Optional days-based retention (not enforced yet) |
 | WALG_BASEBACKUP_CRON | wal_mode | 30 1 * * * | no | wal | Cron for base backups |
 | WALG_CLEAN_CRON | wal_mode | 15 3 * * * | no | wal | Cron for retention/cleanup |
-| ENABLE_SSH_SERVER | testing | 0 | no | wal/testing | Enable internal test SSH server profile |
-| SSH_USER | testing | walg | no | wal/testing | Username for local test SSH server |
+| ENABLE_SSH_SERVER | testing | 0 | no | wal/testing | When 1 auto-starts internal ssh-server (profile) and supplies default WALG_SSH_PREFIX/SSH_PORT=2222 |
+| SSH_USER | testing | (derived) | no | wal/testing | Username (derived from WALG_SSH_PREFIX unless set; default walg when ENABLE_SSH_SERVER=1) |
 | SKIP_SSH_KEYSCAN | testing | 0 | no | wal/testing | Skip ssh-keyscan host key fetch |
 | TELEGRAM_BOT_TOKEN | notifications | (none) | no | all | Telegram bot token for alerts |
 | TELEGRAM_CHAT_ID | notifications | (none) | no | all | Telegram target chat ID |

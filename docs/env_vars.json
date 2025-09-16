@@ -166,21 +166,21 @@
       "category": "testing",
       "default": 0,
       "required": false,
-      "description": "Enable internal test SSH server container (compose profile)." 
+        "description": "Enable internal test SSH server container (compose profile). When 1, defaults WALG_SSH_PREFIX/SSH_PORT=2222/SSH_USER=walg if unset." 
     },
     {
       "name": "SSH_USER",
       "category": "testing",
-      "default": "walg",
-      "required": false,
-      "description": "Username for local test SSH server (if enabled)." 
+        "default": null,
+        "required": false,
+        "description": "Username for SSH; derived from WALG_SSH_PREFIX unless provided (defaults to walg when ENABLE_SSH_SERVER=1)." 
     },
     {
       "name": "WALG_SSH_PREFIX_LOCAL",
       "category": "testing",
       "default": "ssh://walg@ssh-server/backups",
       "required": false,
-      "description": "Helper override for local test server; can substitute WALG_SSH_PREFIX in local workflows." 
+      "description": "DEPRECATED: use WALG_SSH_PREFIX with ENABLE_SSH_SERVER=1 (internal test server auto defaults)." 
     },
     {
       "name": "SKIP_SSH_KEYSCAN",

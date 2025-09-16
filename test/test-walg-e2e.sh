@@ -19,6 +19,50 @@ if [[ -f "$ENV_FILE" ]]; then
     set +o allexport
 fi
 
+# Derive SSH connection parameters:
+# - If ENABLE_SSH_SERVER=1 -> internal container hostname is 'ssh-server', default user 'walg', default port 2222
+# - Else try to parse from WALG_SSH_PREFIX (ssh://user@host[:port]/path)
+if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+    SSH_HOST="ssh-server"
+    SSH_USER="${SSH_USER:-${SSH_USERNAME:-walg}}"
+    SSH_PORT="${SSH_PORT:-2222}"
+else
+    # Parse WALG_SSH_PREFIX if available
+    if [[ -n "${WALG_SSH_PREFIX:-}" ]]; then
+        # Remove ssh:// prefix and any trailing path to get user@host:port
+        _tmp=${WALG_SSH_PREFIX#ssh://}
+        _tmp=${_tmp%%/*}   # now user@host[:port] or host[:port]
+
+        # If an @ exists, split user and hostport
+        if [[ "$_tmp" == *@* ]]; then
+            SSH_USER=${_tmp%%@*}
+            _hostport=${_tmp#*@}
+        else
+            _hostport=$_tmp
+        fi
+
+        # If a :port exists at the end, split host and port
+        if [[ "$_hostport" == *:* ]]; then
+            SSH_PORT=${_hostport##*:}
+            SSH_HOST=${_hostport%%:*}
+        else
+            SSH_HOST=$_hostport
+        fi
+    fi
+    # Fallback defaults
+    SSH_USER="${SSH_USER:-${SSH_USERNAME:-walg}}"
+    SSH_PORT="${SSH_PORT:-22}"
+fi
+
+# Test helper port used in SSH test commands
+WALG_SSH_TEST_PORT="${WALG_SSH_TEST_PORT:-$SSH_PORT}"
+
+# Ensure we have an SSH host to connect to (fail early with helpful message)
+if [[ -z "${SSH_HOST:-}" ]]; then
+    echo "Error: SSH host could not be determined. Set WALG_SSH_PREFIX (ssh://user@host[:port]/path) or set ENABLE_SSH_SERVER=1 to use the internal test server." >&2
+    exit 4
+fi
+
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-postgres}"
 CLEANUP=${CLEANUP:-1}
@@ -29,6 +73,25 @@ die() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "PASS: $*"; }
 skip() { echo "SKIP: $*"; }
 warn() { echo "WARN: $*"; }
+
+# Derive remote backup path from WALG_SSH_PREFIX (absolute path required by wal-g)
+get_remote_backup_path() {
+    # Default path used when we cannot parse a path component
+    local default="/backups"
+    if [[ -n "${WALG_SSH_PREFIX:-}" && "${WALG_SSH_PREFIX}" =~ ^ssh://[^/]+(/.*)$ ]]; then
+        local p="${BASH_REMATCH[1]}"
+        # Ensure it starts with /. wal-g requires absolute path.
+        if [[ "$p" != /* ]]; then
+            p="/$p"
+        fi
+        echo "$p"
+    else
+        echo "$default"
+    fi
+}
+
+# Common SSH options for host-side test runner (avoid interactive prompts)
+SSH_TEST_OPTS="-o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 # Get container IDs
 get_container_ids() {
@@ -44,8 +107,13 @@ get_container_ids() {
         die "Backup container not found. Is the stack running?"
     fi
     
-    if [[ -z "$SSH_CONTAINER_ID" ]]; then
-        die "SSH server container not found. Is the stack running with --profile ssh-testing?"
+    if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+        if [[ -z "$SSH_CONTAINER_ID" ]]; then
+            die "SSH server container not found. Is the stack running with --profile ssh-testing?"
+        fi
+    else
+        # If not using internal server, SSH_CONTAINER_ID may be empty; that's OK
+        :
     fi
 }
 
@@ -67,22 +135,36 @@ wait_for_services() {
     done
     pass "PostgreSQL is ready"
     
-    # Wait for SSH server
-    count=0
-    while ! docker exec "$SSH_CONTAINER_ID" netstat -ln | grep -q ":2222 "; do
-        if ((count++ > 30)); then
-            die "SSH server failed to become ready within 30 seconds"
-        fi
-        sleep 1
-    done
-    pass "SSH server is ready"
+    # Wait for SSH server only if using internal test container
+    if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+        count=0
+        while ! docker exec "$SSH_CONTAINER_ID" netstat -ln | grep -q ":${SSH_PORT} "; do
+            if ((count++ > 30)); then
+                die "SSH server failed to become ready within 30 seconds"
+            fi
+            sleep 1
+        done
+        pass "SSH server is ready"
+    else
+        pass "External SSH server assumed available (not checking container)"
+    fi
     
     # Ensure backup directory has proper permissions for walg user
     echo "Setting up backup directory permissions..."
-    if docker exec "$SSH_CONTAINER_ID" bash -c "mkdir -p /backups && chown walg:walg /backups && chmod 755 /backups" 2>/dev/null; then
-        pass "Backup directory permissions configured"
+    if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+        if docker exec "$SSH_CONTAINER_ID" bash -c "mkdir -p /backups && chown walg:walg /backups && chmod 755 /backups" 2>/dev/null; then
+            pass "Backup directory permissions configured (ssh-server container)"
+        else
+            warn "Could not configure backup directory permissions in ssh-server container (may still work)"
+        fi
     else
-        warn "Could not configure backup directory permissions (may still work)"
+        # Use postgres container (which has the prepared key) to create remote path
+        remote_path="$(get_remote_backup_path)"
+        if docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"mkdir -p ${remote_path} && chmod 755 ${remote_path}\"'" 2>/dev/null; then
+            pass "Backup directory permissions configured on external SSH host (via postgres container)"
+        else
+            warn "Could not configure backup directory permissions on external SSH host (via postgres container)"
+        fi
     fi
     
     # Give a moment for wal-g initialization
@@ -94,16 +176,15 @@ test_remote_connectivity() {
     echof "Testing remote SSH connectivity and wal-g configuration"
     
     # Test SSH connectivity from postgres container
-        # Allow overriding test SSH port (internal container port). Default matches docker-compose (2222).
-        WALG_SSH_TEST_PORT="${WALG_SSH_TEST_PORT:-2222}"
+    # WALG_SSH_TEST_PORT is set earlier (falls back to derived SSH_PORT)
         # Run SSH as the 'postgres' user so it will use the key prepared at
         # /var/lib/postgresql/.ssh/walg_key (walg-env-prepare.sh sets WALG_SSH_PRIVATE_KEY_PATH)
-        if docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -p $WALG_SSH_TEST_PORT walg@ssh-server 'echo SSH connection successful'\"" 2>/dev/null; then
+        if docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -p $WALG_SSH_TEST_PORT ${SSH_USER}@${SSH_HOST} 'echo SSH connection successful'\"" 2>/dev/null; then
             pass "SSH connectivity to remote server working"
         else
             warn "SSH connectivity test failed — collecting verbose SSH output for debugging (as postgres)"
             echo "---- SSH verbose debug output start ----"
-            docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -o PreferredAuthentications=publickey -p $WALG_SSH_TEST_PORT -vvv walg@ssh-server\"" || true
+            docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes -o PreferredAuthentications=publickey -p $WALG_SSH_TEST_PORT -vvv ${SSH_USER}@${SSH_HOST}\"" || true
             echo "---- SSH verbose debug output end ----"
             die "Cannot establish SSH connection to remote server"
         fi
@@ -132,16 +213,29 @@ get_backup_count() {
 
 # Get WAL files count in remote storage
 get_remote_wal_count() {
-    # wal-g stores WAL files in subdirectories like wal_005/
-    # Look for compressed WAL files in the entire backup directory structure
+    # Total count of compressed WAL-related files (segments + backup history markers)
     local out
-    out=$(docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f \( -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' \) 2>/dev/null | wc -l" 2>/dev/null || true)
-    out=$(echo "${out:-0}" | tr -d '[:space:]')
-    if [[ -z "$out" ]] || ! [[ "$out" =~ ^[0-9]+$ ]]; then
-        echo 0
+    if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+        out=$(docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f \( -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' \) 2>/dev/null | wc -l" 2>/dev/null || true)
     else
-        echo "$out"
+        local remote_path="$(get_remote_backup_path)"
+        out=$(docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"find ${remote_path} -type f \\\\( -name \\\"*.lz4\\\" -o -name \\\"*.br\\\" -o -name \\\"*.gz\\\" -o -name \\\"*.zst\\\" \\\\) 2>/dev/null | wc -l\"'" 2>/dev/null || true)
     fi
+    out=$(echo "${out:-0}" | tr -d '[:space:]')
+    [[ -z "$out" || ! "$out" =~ ^[0-9]+$ ]] && echo 0 || echo "$out"
+}
+
+# Count only pure WAL segment files (exclude .backup history / sentinel files)
+get_remote_pure_wal_count() {
+    local out
+    if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+        out=$(docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' | sed 's|.*/||' | grep -E '^[0-9A-F]{24}\.(lz4|br|gz|zst)$' | wc -l" 2>/dev/null || true)
+    else
+        local remote_path="$(get_remote_backup_path)"
+        out=$(docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"find ${remote_path} -type f -name \\\"*.lz4\\\" -o -name \\\"*.br\\\" -o -name \\\"*.gz\\\" -o -name \\\"*.zst\\\" | sed \\\"s|.*/||\\\" | grep -E \\\"^[0-9A-F]{24}\\\\.\\\\(lz4|br|gz|zst\\\\)$\\\" | wc -l\"'" 2>/dev/null || true)
+    fi
+    out=$(echo "${out:-0}" | tr -d '[:space:]')
+    [[ -z "$out" || ! "$out" =~ ^[0-9]+$ ]] && echo 0 || echo "$out"
 }
 
 # Test 1: Archive command wal-push functionality
@@ -149,41 +243,84 @@ test_wal_push_e2e() {
     echof "Testing end-to-end WAL push functionality"
     
     # Check initial WAL count
-    local initial_wal_count
+    local initial_wal_count initial_pure_wal_count
     initial_wal_count=$(get_remote_wal_count)
-    echo "Initial WAL count in remote storage: $initial_wal_count"
+    initial_pure_wal_count=$(get_remote_pure_wal_count)
+    echo "Initial WAL count (all compressed files): $initial_wal_count"
+    echo "Initial pure WAL segment count: $initial_pure_wal_count"
+    if (( initial_pure_wal_count == 0 )); then
+        echo "(debug) Listing candidate WAL basenames (raw) and filtered matches:"
+        if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+            docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' | head -20" || true
+            echo "(debug) Pure WAL pattern matches:"
+            docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f -name '*.lz4' -o -name '*.br' -o -name '*.gz' -o -name '*.zst' | sed 's|.*/||' | grep -E '^[0-9A-F]{24}\.(lz4|br|gz|zst)$' | head -20" || true
+        else
+            remote_path="$(get_remote_backup_path)"
+            docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"find ${remote_path} -type f -name \\\"*.lz4\\\" -o -name \\\"*.br\\\" -o -name \\\"*.gz\\\" -o -name \\\"*.zst\\\" | head -20\"'" || true
+            echo "(debug) Pure WAL pattern matches:"
+            docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"find ${remote_path} -type f -name \\\"*.lz4\\\" -o -name \\\"*.br\\\" -o -name \\\"*.gz\\\" -o -name \\\"*.zst\\\" | sed \\\"s|.*/||\\\" | grep -E \\\"^[0-9A-F]{24}\\\\.\\\\(lz4|br|gz|zst\\\\)$\\\" | head -20\"'" || true
+        fi
+    fi
     
     # Show current remote directory structure for debugging
     echo "Current remote directory structure:"
-    docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f 2>/dev/null | head -10" || echo "No files found or directory doesn't exist"
+    if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+        docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f 2>/dev/null | head -10" || echo "No files found or directory doesn't exist"
+    else
+        remote_path="$(get_remote_backup_path)"
+        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"find ${remote_path} -type f 2>/dev/null | head -10\"'" || echo "No files found or directory doesn't exist"
+    fi
     
-    # Generate some WAL activity
-    echo "Generating WAL activity..."
-    docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "
-        CREATE TABLE IF NOT EXISTS wal_test_table (id SERIAL PRIMARY KEY, data TEXT);
-        INSERT INTO wal_test_table (data) SELECT 'test_data_' || generate_series(1, 1000);
-        SELECT pg_switch_wal();
-    " >/dev/null 2>&1
+    # Generate some WAL activity with adaptive polling & forced switches
+    echo "Generating WAL activity (adaptive)..."
+    # We'll loop a few times to ensure at least one new segment gets archived.
+    local attempts=0 current_after_gen current_after_pure
+    local max_attempts=6
+    local target=$((initial_pure_wal_count + 1))
+    while (( attempts < max_attempts )); do
+        attempts=$((attempts + 1))
+        echo "[WAL GEN] Attempt $attempts: inserting rows and forcing switch"
+        docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -v ON_ERROR_STOP=1 -c "
+            CREATE TABLE IF NOT EXISTS wal_test_table (id SERIAL PRIMARY KEY, data TEXT);
+            INSERT INTO wal_test_table (data) SELECT 'test_data_' || generate_series(1, 5000);
+            SELECT pg_switch_wal();
+        " >/dev/null 2>&1 || echo "Insert/switch attempt $attempts failed (continuing)"
+        # Short wait to allow archiver to pick up the switched segment
+        sleep 4
+        current_after_gen=$(get_remote_wal_count)
+        current_after_pure=$(get_remote_pure_wal_count)
+        echo "[WAL GEN] Remote counts now: all=$current_after_gen pure=$current_after_pure (target > $initial_pure_wal_count)"
+        if (( current_after_pure > initial_pure_wal_count )); then
+            echo "New WAL segment detected after $attempts attempt(s)"
+            break
+        fi
+    done
     
-    # Force WAL archiving to happen immediately
-    echo "Forcing WAL segment switch and archiving..."
-    docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "SELECT pg_switch_wal();" >/dev/null 2>&1
-    
-    # Wait for WAL archiving to complete
-    echo "Waiting for WAL archiving to complete..."
-    sleep 15
+    # If still no progress, perform one more explicit switch & wait a bit longer
+    if (( current_after_pure <= initial_pure_wal_count )); then
+        echo "No new WAL yet; performing final forced switch & extended wait"
+        docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "SELECT pg_switch_wal();" >/dev/null 2>&1 || true
+        sleep 10
+    fi
     
     # Check if new WAL files appeared
-    local final_wal_count
+    local final_wal_count final_pure_wal_count
     final_wal_count=$(get_remote_wal_count)
-    echo "Final WAL count in remote storage: $final_wal_count"
+    final_pure_wal_count=$(get_remote_pure_wal_count)
+    echo "Final WAL count (all compressed files): $final_wal_count"
+    echo "Final pure WAL segment count: $final_pure_wal_count"
     
     # Show what files were created for debugging
     echo "Files in remote storage after WAL activity:"
-    docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f -newer /backups 2>/dev/null | head -10" || echo "No new files found"
+    if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+        docker exec "$SSH_CONTAINER_ID" bash -c "find /backups -type f -newer /backups 2>/dev/null | head -10" || echo "No new files found"
+    else
+        remote_path="$(get_remote_backup_path)"
+        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"find ${remote_path} -type f -newer ${remote_path} 2>/dev/null | head -10\"'" || echo "No new files found"
+    fi
     
-    if ((final_wal_count > initial_wal_count)); then
-        pass "WAL files successfully pushed to remote storage (count: $initial_wal_count -> $final_wal_count)"
+    if ((final_pure_wal_count > initial_pure_wal_count)); then
+        pass "WAL files successfully pushed (pure segments: $initial_pure_wal_count -> $final_pure_wal_count)"
         
         # Verify we can see specific WAL push activity in logs
         if docker logs "$POSTGRES_CONTAINER_ID" 2>&1 | grep -q "wal-g wal-push\|archived"; then
@@ -201,20 +338,34 @@ test_wal_push_e2e() {
         echo "Checking PostgreSQL logs for errors..."
         docker logs "$POSTGRES_CONTAINER_ID" 2>&1 | grep -i "archive\|wal-g\|error" | tail -10 || echo "No relevant log entries found"
         
-        echo "Testing wal-g manually..."
-        docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g --version" || echo "wal-g not accessible"
+    echo "Testing wal-g manually..."
+    docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g --version" || echo "wal-g not accessible"
+    echo "pg_stat_archiver info:"
+    docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "SELECT archived_count, last_archived_wal, last_archived_time, last_failed_wal, last_failed_time FROM pg_stat_archiver;" || true
+    echo "Listing archive_status (.done/.ready) files (max 20):"
+    docker exec "$POSTGRES_CONTAINER_ID" bash -c "ls -t /var/lib/postgresql/data/pg_wal/archive_status 2>/dev/null | head -20" || true
+    echo "Local pg_wal segment files (head 15):"
+    docker exec "$POSTGRES_CONTAINER_ID" bash -c "ls -1 /var/lib/postgresql/data/pg_wal | head -15" || true
+    echo "Attempting manual archive of oldest ready segment if any..."
+    docker exec "$POSTGRES_CONTAINER_ID" bash -c 'seg=$(ls /var/lib/postgresql/data/pg_wal/archive_status/*.ready 2>/dev/null | head -1 || true); if [ -n "$seg" ]; then base=$(basename "$seg" .ready); echo "Found ready segment $base - invoking wal-g wal-push"; wal-g wal-push "/var/lib/postgresql/data/pg_wal/$base" || echo "wal-push failed"; else echo "No .ready segments present"; fi' || true
         
-        echo "Checking SSH connectivity from postgres container..."
-        docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o ConnectTimeout=5 -o BatchMode=yes -p 2222 walg@ssh-server 'echo SSH test successful'\"" || echo "SSH test failed"
+    echo "Checking SSH connectivity from postgres container..."
+    docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c \"ssh -o ConnectTimeout=5 -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} 'echo SSH test successful'\"" || echo "SSH test failed"
         
         echo "Checking backup directory permissions..."
-        docker exec "$SSH_CONTAINER_ID" bash -c "ls -la /backups/" || echo "Backup directory not accessible"
-        docker exec "$SSH_CONTAINER_ID" bash -c "id walg" || echo "walg user not found"
+            if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
+                docker exec "$SSH_CONTAINER_ID" bash -c "ls -la /backups/" || echo "Backup directory not accessible"
+                docker exec "$SSH_CONTAINER_ID" bash -c "id walg" || echo "walg user not found"
+            else
+                remote_path="$(get_remote_backup_path)"
+                docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} \"ls -la ${remote_path}\"'" || echo "Backup directory not accessible"
+                docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} id ${SSH_USER}'" || echo "walg user not found (or user lookup failed)"
+            fi
         
         echo "Testing manual wal-g wal-push..."
         docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'wal-g --help | head -5'" || echo "wal-g help failed"
         
-        die "No new WAL files found in remote storage (count remained at $initial_wal_count)"
+        die "No new WAL files found (pure segments remained at $initial_pure_wal_count)"
     fi
 }
 

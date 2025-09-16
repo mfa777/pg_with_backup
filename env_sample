@@ -75,15 +75,17 @@ WALG_BASEBACKUP_CRON="30 1 * * *"
 WALG_CLEAN_CRON="15 3 * * *"
 
 # --- Local SSH Server for Testing (Optional) ---
-# Set to 1 to enable local SSH server for wal-g testing
+# ENABLE_SSH_SERVER=1: 自动启用内部 ssh-server (docker compose --profile ssh-testing)，
+# 并使用默认: WALG_SSH_PREFIX=ssh://walg@ssh-server/backups  SSH_PORT=2222  SSH_USER=walg
+# ENABLE_SSH_SERVER=0: 需要自行提供一个可访问的 WALG_SSH_PREFIX (例如外部机器)
+# WALG_SSH_PREFIX 在 ENABLE_SSH_SERVER=1 时可留空，会被自动填入默认值
 ENABLE_SSH_SERVER=0
 
-# SSH user for the local test server  
-SSH_USER=walg
+# SSH user for test server (留空则会从 WALG_SSH_PREFIX 推断；仅在需要覆盖时设置)
+SSH_USER=
 
-# Local SSH server configuration for testing wal-g
-# When using local SSH server, this replaces WALG_SSH_PREFIX (port provided via WALG_SSH_PORT)
-WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server/backups
+# (Deprecated) WALG_SSH_PREFIX_LOCAL 现已弃用，统一使用 WALG_SSH_PREFIX。
+# WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server/backups
 
 # --- pgAdmin Settings ---
 # pgAdmin (database administration tool) runs on port 8080
