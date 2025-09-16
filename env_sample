@@ -5,35 +5,35 @@
 # Choose backup mode: sql (pg_dump backups) or wal (wal-g incremental backups)
 BACKUP_MODE=sql
 
-# --- Docker Configuration Based on Mode ---
-# For SQL mode (default):
-POSTGRES_IMAGE=postgres:17
-# POSTGRES_DOCKERFILE=  (leave empty/commented for SQL mode)
+# --- General Settings ---
+# Timezone for the container and cron job (e.g., Asia/Shanghai, UTC, America/New_York)
+TZ=Asia/Shanghai
 
-# For WAL mode (uncomment and comment out POSTGRES_IMAGE above):
-# POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
-# BACKUP_VOLUME_MODE=ro  (optional: backup container only reads in WAL mode)
-
-# --- PostgreSQL Credentials ---
 # Default superuser and password. CHANGE THE PASSWORD!
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_very_strong_superuser_password
 
-# --- SQL Mode Backup Configuration (legacy) ---
+# --- Docker Configuration Based on Mode ---
+# For SQL mode (default):
 # These are used when BACKUP_MODE=sql
+
 # Base64 encoded content of your rclone.conf file
 # Run: cat ~/.config/rclone/rclone.conf | base64 -w0
 RCLONE_CONFIG_BASE64=PASTE_YOUR_BASE64_ENCODED_RCLONE_CONFIG_HERE
 
-# Your AGE public key for encryption
-AGE_PUBLIC_KEY=PASTE_YOUR_AGE_PUBLIC_KEY_HERE
-
 # Rclone remote path (e.g., mydrive:database_backups/postgres)
 REMOTE_PATH=your_rclone_remote:path/to/all_db_backups
+
+# Your AGE public key for encryption
+AGE_PUBLIC_KEY=PASTE_YOUR_AGE_PUBLIC_KEY_HERE
 
 # How many days to keep the SQL dumps on the rclone remote
 SQL_BACKUP_RETAIN_DAYS=30
 
+# Script will be executed every day at 2:00 AM
+BACKUP_CRON_SCHEDULE="0 2 * * *"
+
+# For WAL mode:
 # --- WAL Mode Configuration (wal-g over SSH) ---
 # These are used when BACKUP_MODE=wal
 # SSH remote path for wal-g (omit port; set WALG_SSH_PORT below to avoid double-port parsing issues)
@@ -85,21 +85,13 @@ SSH_USER=walg
 # When using local SSH server, this replaces WALG_SSH_PREFIX (port provided via WALG_SSH_PORT)
 WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server/backups
 
-# --- Telegram Notifications (Optional) ---
-TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE
-TELEGRAM_CHAT_ID=PASTE_YOUR_TELEGRAM_CHAT_ID_HERE
-TELEGRAM_MESSAGE_PREFIX=Database
-
-# --- General Settings ---
-# Timezone for the container and cron job (e.g., Asia/Shanghai, UTC, America/New_York)
-TZ=Asia/Shanghai
-
-# --- CRON Settings ---
-# Script will be executed every day at 2:00 AM
-BACKUP_CRON_SCHEDULE="0 2 * * *"
-
 # --- pgAdmin Settings ---
 # pgAdmin (database administration tool) runs on port 8080
 # Admin credentials for initial setup (change these for security!)
 PGADMIN_DEFAULT_EMAIL=admin@admin.com
 PGADMIN_DEFAULT_PASSWORD=admin
+
+# --- Telegram Notifications (Optional) ---
+TELEGRAM_BOT_TOKEN=PASTE_YOUR_TELEGRAM_BOT_TOKEN_HERE
+TELEGRAM_CHAT_ID=PASTE_YOUR_TELEGRAM_CHAT_ID_HERE
+TELEGRAM_MESSAGE_PREFIX=Database
