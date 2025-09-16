@@ -322,6 +322,13 @@ test_recovery_capability() {
             else
                 warn "backup-fetch command test failed"
             fi
+            
+            # Test if we can get wal fetch info (without actually fetching)
+            if docker exec "$POSTGRES_CONTAINER_ID" bash -c "wal-g wal-fetch --help" >/dev/null 2>&1; then
+                pass "wal-fetch command available for recovery"
+            else
+                warn "wal-fetch command test failed"
+            fi
         fi
     else
         skip "No valid backups found for recovery testing"

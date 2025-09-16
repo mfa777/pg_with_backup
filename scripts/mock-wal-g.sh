@@ -24,7 +24,9 @@ Mock wal-g for testing - simulates real wal-g behavior
 Commands:
   backup-list       List all backups
   backup-push       Create a new backup
+  backup-fetch      Fetch a backup for recovery
   wal-push          Archive a WAL file
+  wal-fetch         Fetch a WAL file for recovery
   delete            Delete old backups
   --help            Show this help
   --version         Show version
@@ -65,6 +67,46 @@ backup_push() {
     return 0
 }
 
+# Simulate backup-fetch
+backup_fetch() {
+    local dest_dir="${1:-/tmp/recovery}"
+    local backup_name="${2:-LATEST}"
+    log "Executing backup-fetch to $dest_dir for backup $backup_name"
+    
+    # Check if backups exist
+    if [[ ! -f "$MOCK_BACKUP_DIR/backups.txt" ]]; then
+        log "ERROR: No backups available for fetch"
+        echo "ERROR: No backups available" >&2
+        return 1
+    fi
+    
+    # Get backup to fetch (LATEST or specific name)
+    local target_backup
+    if [[ "$backup_name" == "LATEST" ]]; then
+        target_backup=$(tail -1 "$MOCK_BACKUP_DIR/backups.txt" | awk '{print $1}' || echo "")
+    else
+        target_backup="$backup_name"
+    fi
+    
+    if [[ -z "$target_backup" ]]; then
+        log "ERROR: No backup found to fetch"
+        echo "ERROR: No backup found" >&2
+        return 1
+    fi
+    
+    # Check if backup file exists
+    if [[ ! -f "$MOCK_BACKUP_DIR/${target_backup}.tar.lz4" ]]; then
+        log "ERROR: Backup file $target_backup not found"
+        echo "ERROR: Backup file not found" >&2
+        return 1
+    fi
+    
+    log "Fetching backup $target_backup to $dest_dir"
+    echo "Fetching backup $target_backup..."
+    echo "Backup fetch completed successfully"
+    return 0
+}
+
 # Simulate wal-push
 wal_push() {
     local wal_file="$1"
@@ -79,6 +121,26 @@ wal_push() {
         return 0
     else
         log "ERROR: WAL file $wal_file not found"
+        return 1
+    fi
+}
+
+# Simulate wal-fetch
+wal_fetch() {
+    local wal_name="$1"
+    local dest_path="$2"
+    log "Executing wal-fetch for $wal_name to $dest_path"
+    
+    # Check if WAL file exists in archive
+    if [[ -f "$MOCK_BACKUP_DIR/${wal_name}.lz4" ]]; then
+        log "Fetching WAL file $wal_name to $dest_path"
+        # Simulate decompression and placement
+        echo "Mock WAL content" > "$dest_path"
+        echo "WAL file fetched: $wal_name"
+        return 0
+    else
+        log "WAL file $wal_name not found in archive"
+        echo "WAL file not found: $wal_name" >&2
         return 1
     fi
 }
@@ -124,12 +186,38 @@ case "${1:-help}" in
     "backup-push")
         backup_push "${2:-/var/lib/postgresql/data}"
         ;;
+    "backup-fetch")
+        # Handle help for backup-fetch
+        if [[ "${2:-}" == "--help" ]]; then
+            echo "Usage: wal-g backup-fetch <destination-directory> [backup-name|LATEST]"
+            echo "Fetch a backup for recovery purposes"
+            exit 0
+        fi
+        if [[ -z "${2:-}" ]]; then
+            echo "Error: backup-fetch requires destination directory" >&2
+            exit 1
+        fi
+        backup_fetch "$2" "${3:-LATEST}"
+        ;;
     "wal-push")
         if [[ -z "${2:-}" ]]; then
             echo "Error: wal-push requires WAL file path" >&2
             exit 1
         fi
         wal_push "$2"
+        ;;
+    "wal-fetch")
+        # Handle help for wal-fetch
+        if [[ "${2:-}" == "--help" ]]; then
+            echo "Usage: wal-g wal-fetch <wal-name> <destination-path>"
+            echo "Fetch a WAL file for recovery purposes"
+            exit 0
+        fi
+        if [[ -z "${2:-}" || -z "${3:-}" ]]; then
+            echo "Error: wal-fetch requires WAL name and destination path" >&2
+            exit 1
+        fi
+        wal_fetch "$2" "$3"
         ;;
     "delete")
         case "${2:-}" in
