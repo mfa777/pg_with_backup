@@ -86,7 +86,7 @@ run_backup() {
         unset WALG_DELTA_MAX_STEPS
     fi
     
-    # Execute backup
+    # Execute backup (capture output for retry logic)
     if $backup_cmd 2>&1 | tee "$log_file"; then
         local duration=$(($(date +%s) - start_time))
         
@@ -112,6 +112,23 @@ run_backup() {
         
         return 0
     else
+        # Check if failure is due to delta/base mismatch (system identifier changed)
+        if grep -qi "Current database and database of base backup are not equal" "$log_file"; then
+            log "Detected system identifier mismatch during delta backup; retrying as full backup"
+            # Force full backup by unsetting delta-related vars
+            unset WALG_DELTA_MAX_STEPS
+            local full_retry_log="${log_file%.log}_full_retry.log"
+            if wal-g backup-push "$PGDATA" 2>&1 | tee "$full_retry_log"; then
+                local duration=$(($(date +%s) - start_time))
+                log "Full backup retry succeeded (Duration: ${duration}s)"
+                ln -sf "$full_retry_log" "$LOG_DIR/latest.log"
+                echo "$(date -Iseconds) OK TYPE=FULL_RETRY Duration=${duration}s LogFile=$full_retry_log" > "$PGDATA/walg_basebackup.last"
+                return 0
+            else
+                log "ERROR: Full backup retry failed"
+                send_telegram_message "ERROR: Full backup retry failed after delta mismatch."
+            fi
+        fi
         log "ERROR: Backup failed"
         send_telegram_message "ERROR: Base backup failed. Check logs."
         return 1

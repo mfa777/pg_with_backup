@@ -35,11 +35,33 @@ run_sql_mode() {
 
 run_wal_mode() {
 	echo "Running tests in WAL (wal-g) backup mode..."
-	
-	# Step 1: Setup local SSH server and configure environment  
-	echo "Setting up local SSH server and environment..."
-	"$SCRIPT_DIR/scripts/setup-local-ssh.sh"
-	echo "SSH server setup completed."
+
+	# If ENABLE_SSH_SERVER=1 (explicit) then setup local ssh server, else rely on existing WALG_SSH_PREFIX
+	ENABLE_SSH_SERVER_VAL="${ENABLE_SSH_SERVER:-}"; export ENABLE_SSH_SERVER_VAL
+	if [[ -z "$ENABLE_SSH_SERVER_VAL" && -f "$SCRIPT_DIR/.env" ]]; then
+		set -o allexport; source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true; set +o allexport
+		ENABLE_SSH_SERVER_VAL="${ENABLE_SSH_SERVER:-}"; export ENABLE_SSH_SERVER_VAL
+	fi
+
+	if [[ "$ENABLE_SSH_SERVER_VAL" == "1" ]]; then
+		echo "ENABLE_SSH_SERVER=1 -> provisioning internal ssh-server for tests" 
+		"$SCRIPT_DIR/scripts/setup-local-ssh.sh"
+		echo "Local SSH server environment prepared."
+	else
+		# Ensure WALG_SSH_PREFIX present unless internal server is requested later
+		if [[ -z "${WALG_SSH_PREFIX:-}" ]]; then
+			# Attempt to load from .env
+			if [[ -f "$SCRIPT_DIR/.env" ]]; then
+				set -o allexport; source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true; set +o allexport
+			fi
+		fi
+		if [[ -z "${WALG_SSH_PREFIX:-}" ]]; then
+			echo "Error: WALG_SSH_PREFIX must be set in environment or .env for WAL mode when ENABLE_SSH_SERVER!=1" >&2
+			echo "Hint: run scripts/setup-local-ssh.sh or set ENABLE_SSH_SERVER=1 for an embedded test server" >&2
+			exit 4
+		fi
+		# Auto derive SSH_PORT if absent and prefix encodes a port; else keep user config (no forced 2222)
+	fi
 	
 	# Step 2: Clean up any existing containers and volumes to avoid conflicts
 	# echo "Cleaning up any existing containers and volumes..."

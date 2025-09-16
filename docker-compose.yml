@@ -24,7 +24,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data
       # Conditionally mount SSH key (create empty file if not exists)
-      - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
+      #- ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
     networks:
       - pg_network
 
@@ -40,7 +40,7 @@ services:
       # Mount postgres data for wal-g mode backups
       - pg_data:/var/lib/postgresql/data:rw
       # Mount SSH key for wal-g mode
-      - ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
+      #- ${SSH_KEY_PATH:-./secrets/walg_ssh_key}:/secrets/walg_ssh_key:ro
     depends_on:
       - postgres
     networks:
