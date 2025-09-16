@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:17}
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres-walg
     container_name: postgres
     restart: unless-stopped
     environment:
@@ -29,7 +31,7 @@ services:
   backup:
     build:
       context: .
-      dockerfile: ${BACKUP_DOCKERFILE:-Dockerfile.backup}
+      dockerfile: Dockerfile.backup
     restart: unless-stopped
     env_file: .env
     volumes:

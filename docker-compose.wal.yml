@@ -1,9 +1,0 @@
-# docker-compose.wal.yml - Use for WAL-G backup mode
-# Usage: docker compose -f docker-compose.yml -f docker-compose.wal.yml up --build -d
-
-services:
-  postgres:
-    image: null  # Override the default postgres image
-    build:
-      context: .
-      dockerfile: Dockerfile.postgres-walg
