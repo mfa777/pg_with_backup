@@ -20,7 +20,7 @@ RUN apk add --no-cache \
     rm -rf /var/cache/apk/*
 
 # Download and install wal-g (use Ubuntu build with glibc compatibility)
-ARG WALG_VERSION=v2.0.1
+ARG WALG_VERSION=v3.0.7
 RUN set -eux; \
     apk add --no-cache --virtual .build-deps curl tar wget; \
     echo "Downloading wal-g version ${WALG_VERSION}..."; \

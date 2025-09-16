@@ -57,10 +57,11 @@ REMOTE_PATH=your_rclone_remote:path/to/backups
 
 ** WAL-G Mode Setup
 
-1. *Switch to WAL mode:* Run =./scripts/switch-to-wal.sh= or manually set:
+1. *Switch to WAL mode:* Manually set in .env file:
    #+begin_src bash
    BACKUP_MODE=wal
    POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
+   # Comment out POSTGRES_IMAGE line when using custom dockerfile
    # BACKUP_VOLUME_MODE=ro   # (optional) only needed if you externally constrain write access
    #+end_src
 
@@ -173,14 +174,22 @@ If you have another application running in a Docker container and want it to con
 
 *** Switch to WAL-G Mode
 #+begin_src bash
-./scripts/switch-to-wal.sh
+# Edit .env file to set:
+# BACKUP_MODE=wal
+# POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
+# (comment out POSTGRES_IMAGE line)
+
 docker compose down
 docker compose up --build -d
 #+end_src
 
 *** Switch to SQL Mode  
 #+begin_src bash
-./scripts/switch-to-sql.sh
+# Edit .env file to set:
+# BACKUP_MODE=sql
+# POSTGRES_IMAGE=postgres:17
+# (comment out POSTGRES_DOCKERFILE line)
+
 docker compose down
 docker compose up --build -d
 #+end_src

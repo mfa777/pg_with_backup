@@ -1,7 +1,7 @@
 FROM postgres:17
 
 # Set argument for wal-g version
-ARG WALG_VERSION=v2.0.1
+ARG WALG_VERSION=v3.0.7
 
 # Install required packages for wal-g, SSH and build deps for extensions (pgvector)
 RUN apt-get update && apt-get install -y --no-install-recommends \
