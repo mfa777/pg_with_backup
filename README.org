@@ -28,17 +28,17 @@ Production-ready PostgreSQL setup with automated, encrypted backups to remote st
 
 3. *Create required Docker volume:*
    #+begin_src bash
-   docker volume create postgres-data
+   sudo docker volume create postgres-data
    #+end_src
 
 4. *Start the stack:*
    #+begin_src bash
-   docker compose up --build -d
+   sudo docker compose up --build -d
    #+end_src
 
 5. *Monitor backup logs:*
    #+begin_src bash
-   docker compose logs backup -f
+   sudo docker compose logs backup -f
    #+end_src
 
 ** Backup Mode Comparison
@@ -100,7 +100,7 @@ SQL_BACKUP_RETAIN_DAYS=30
 
 2. *Start the stack:*
    #+begin_src bash
-   docker compose up --build -d
+   sudo docker compose up --build -d
    #+end_src
 
 3. *⚠️ IMPORTANT: Create first base backup manually*
@@ -124,10 +124,10 @@ SQL_BACKUP_RETAIN_DAYS=30
    *Verify the backup succeeded:*
    #+begin_src bash
    # Check the backup logs
-   docker compose logs backup
+   sudo docker compose logs backup
    
    # List available backups
-   docker exec postgres wal-g backup-list
+   sudo docker exec postgres wal-g backup-list
    #+end_src
 
 *Note:* The =POSTGRES_VERSION= automatically creates a version-specific subdirectory in your backup storage. For example, if =WALG_SSH_PREFIX=ssh://user@host/backups=, WAL files will be stored at =ssh://user@host/backups/18.0/=.
@@ -190,26 +190,26 @@ networks:
 
 #+begin_src bash
 # View backup logs
-docker compose logs backup -f
+sudo docker compose logs backup -f
 
 # WAL mode: Check last base backup
-docker exec postgres cat /var/lib/postgresql/data/walg_basebackup.last
+sudo docker exec postgres cat /var/lib/postgresql/data/walg_basebackup.last
 
 # WAL mode: List available backups
-docker exec postgres wal-g backup-list
+sudo docker exec postgres wal-g backup-list
 #+end_src
 
 *** Manual Operations (WAL Mode)
 
 #+begin_src bash
 # Trigger base backup manually
-docker exec backup /opt/walg/scripts/wal-g-runner.sh backup
+sudo docker exec backup /opt/walg/scripts/wal-g-runner.sh backup
 
 # Cleanup old backups
-docker exec backup /opt/walg/scripts/wal-g-runner.sh clean
+sudo docker exec backup /opt/walg/scripts/wal-g-runner.sh clean
 
 # Check wal-g version
-docker exec postgres wal-g --version
+sudo docker exec postgres wal-g --version
 #+end_src
 
 ** Restore Procedures
@@ -225,12 +225,12 @@ docker exec postgres wal-g --version
 
 1. Stop the PostgreSQL container:
    #+begin_src bash
-   docker compose stop postgres
+   sudo docker compose stop postgres
    #+end_src
 
 2. Create a restore container:
    #+begin_src bash
-   docker run --rm -it \
+   sudo docker run --rm -it \
      --env-file .env \
      -v postgres-data:/var/lib/postgresql/data \
      postgres-walg bash
@@ -244,8 +244,12 @@ docker exec postgres wal-g --version
    # Fetch base backup
    wal-g backup-fetch /var/lib/postgresql/data LATEST
    
-   # Configure recovery (optional: specify recovery target time)
-   cat > /var/lib/postgresql/data/recovery.signal << EOF
+   # Configure recovery (PostgreSQL 12+)
+   # Create empty recovery.signal file to trigger recovery mode
+   touch /var/lib/postgresql/data/recovery.signal
+   
+   # Add recovery settings to postgresql.conf
+   cat >> /var/lib/postgresql/data/postgresql.conf << EOF
    restore_command = 'wal-g wal-fetch %f %p'
    recovery_target_time = '2025-01-15 14:30:00+00'
    recovery_target_action = 'promote'
@@ -254,7 +258,7 @@ docker exec postgres wal-g --version
 
 4. Restart services:
    #+begin_src bash
-   docker compose up -d
+   sudo docker compose up -d
    #+end_src
 
 ** Additional Resources
