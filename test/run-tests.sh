@@ -16,8 +16,19 @@ WAL_PATHS=("$PG_DATA_PATH/pg_wal" "$PG_DATA_PATH/pg_xlog")
 # WAIT_TIMEOUT controls how long we wait (in seconds) for postgres to become ready.
 # It can be overridden via the TEST_WAIT_TIMEOUT env var for quicker local runs.
 WAIT_TIMEOUT=${TEST_WAIT_TIMEOUT:-30}
-BATCHES=60
-BATCH_SIZE=100
+CLEAN_FAST=${FAST:-0}
+# Adaptive WAL generation parameters; allow env overrides
+if [[ "${CLEAN_FAST}" == "1" ]]; then
+  # Fast path defaults: fewer batches, larger per-batch inserts
+  BATCHES_DEFAULT=4
+  BATCH_SIZE_DEFAULT=500
+else
+  # Full path defaults (previous behavior)
+  BATCHES_DEFAULT=60
+  BATCH_SIZE_DEFAULT=100
+fi
+TEST_WAL_BATCHES=${TEST_WAL_BATCHES:-$BATCHES_DEFAULT}
+TEST_WAL_BATCH_SIZE=${TEST_WAL_BATCH_SIZE:-$BATCH_SIZE_DEFAULT}
 CLEANUP=${CLEANUP:-0}  # set to 1 to bring the stack down at the end
 FORCE_EMPTY_PGDATA=${FORCE_EMPTY_PGDATA:-0} # set to 1 to remove postgres-data volume before starting
 
@@ -237,11 +248,11 @@ COMMIT;
 PSQLSCRIPT
 
   # Perform batch inserts from host via psql, committing each batch
-  for ((b=1;b<=BATCHES;b++)); do
+  for ((b=1;b<=TEST_WAL_BATCHES;b++)); do
     docker exec -i "$CONTAINER_ID" psql -U "$POSTGRES_USER" -d test_ci -v ON_ERROR_STOP=1 <<SQL
 BEGIN;
 INSERT INTO test_wal (payload)
-SELECT md5(random()::text || clock_timestamp()::text) FROM generate_series(1, $BATCH_SIZE);
+SELECT md5(random()::text || clock_timestamp()::text) FROM generate_series(1, $TEST_WAL_BATCH_SIZE);
 COMMIT;
 -- Force WAL segment switch from SQL
 SELECT pg_switch_wal();
@@ -249,7 +260,7 @@ SQL
     # small sleep to let postgres flush WAL activity
     sleep 0.1
   done
-  pass "Inserted $((BATCHES * BATCH_SIZE)) rows in batches (committed per batch)"
+  pass "Inserted $((TEST_WAL_BATCHES * TEST_WAL_BATCH_SIZE)) rows in batches (committed per batch)"
 else
   echof "== Skipping heavy WAL-generating inserts (backup mode != wal)"
   skip "Heavy WAL insert test skipped"
