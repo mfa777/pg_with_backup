@@ -61,10 +61,20 @@ REMOTE_PATH=your_rclone_remote:path/to/backups
 1. *Switch to WAL mode:* Manually set in .env file:
    #+begin_src bash
    BACKUP_MODE=wal
+   POSTGRES_VERSION=18.0  # Or your desired PostgreSQL version (e.g., 16.3, 15.5)
    POSTGRES_DOCKERFILE=Dockerfile.postgres-walg
    # Comment out POSTGRES_IMAGE line when using custom dockerfile
    # BACKUP_VOLUME_MODE=ro   # (optional) only needed if you externally constrain write access
    #+end_src
+
+   *Note:* The =POSTGRES_VERSION= is your single source of truth:
+   - It controls which PostgreSQL Docker image is used (=postgres:18.0=)
+   - It automatically creates a version subdirectory in your WAL backup storage
+   - You don't need to edit the Dockerfile - just change this value in =.env=
+   
+   For example, if =WALG_SSH_PREFIX=ssh://user@host/backups=, WAL files will be stored at
+   =ssh://user@host/backups/18.0/=. This helps organize backups by PostgreSQL version
+   and ensures you restore with the correct version.
 
 2. *Configure SSH storage:* Set up a backup server and configure:
    #+begin_src bash

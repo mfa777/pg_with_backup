@@ -6,6 +6,10 @@
 BACKUP_MODE=sql
 
 # --- General Settings ---
+# PostgreSQL Docker image version (e.g., 17.4, 16.3, 15.5)
+# This version is used for the base image and as a subdirectory in WAL backup storage
+POSTGRES_VERSION=18.0
+
 # Timezone for the container and cron job (e.g., Asia/Shanghai, UTC, America/New_York)
 TZ=Asia/Shanghai
 
