@@ -339,6 +339,42 @@ else
   fi
 fi
 
+# PgBouncer tests (if enabled)
+echof "== PgBouncer functionality tests =="
+if [[ "${ENABLE_PGBOUNCER:-0}" == "1" ]]; then
+  if [ -f "$REPO_DIR/test/test-pgbouncer.sh" ]; then
+    # Source the test functions and run them
+    source "$REPO_DIR/test/test-pgbouncer.sh"
+    
+    # Set the container ID for pgbouncer test functions
+    POSTGRES_CONTAINER_ID="$CONTAINER_ID"
+    
+    # Run the PgBouncer tests
+    test_pgbouncer_process_running && {
+      echo ""
+      test_pgbouncer_listening && {
+        echo ""
+        test_pgbouncer_connection && {
+          echo ""
+          test_pgbouncer_ddl_operations
+          echo ""
+          test_pgbouncer_admin_console || true
+          echo ""
+          test_pgbouncer_configuration || true
+          echo ""
+          test_pgbouncer_pooling
+        }
+      }
+    }
+    
+    pass "PgBouncer functionality tests completed"
+  else
+    skip "PgBouncer functionality test script not found"
+  fi
+else
+  skip "PgBouncer tests skipped (ENABLE_PGBOUNCER not set to 1)"
+fi
+
 # Final notes and optional cleanup
 echof "== Summary =="
 echof "Postgres container: $CONTAINER_ID"

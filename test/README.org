@@ -43,6 +43,34 @@ The test script reads configuration from the `.env` file if present, using these
 - `POSTGRES_USER`: Database user (default: postgres)
 - `POSTGRES_DB`: Database name (default: postgres)  
 - `BACKUP_MODE`: Backup mode - sql or wal (default: sql)
+- `ENABLE_PGBOUNCER`: Enable PgBouncer connection pooling tests (default: 0)
+
+** PgBouncer Testing
+
+When `ENABLE_PGBOUNCER=1` is set in the `.env` file, the test suite will automatically run PgBouncer-specific tests:
+
+1. **Process Validation**: Verifies PgBouncer binary is installed and process is running
+2. **Port Listening**: Confirms PgBouncer is listening on the configured port (default: 6432)
+3. **Connection Testing**: Tests database connections through PgBouncer
+4. **DDL Operations**: Validates CREATE TABLE, INSERT, and SELECT operations through PgBouncer
+5. **Admin Console**: Tests access to PgBouncer admin console (SHOW POOLS)
+6. **Configuration**: Verifies PgBouncer configuration file and settings
+7. **Connection Pooling**: Tests multiple concurrent connections through the pool
+
+To run PgBouncer tests:
+
+#+BEGIN_SRC bash
+# Enable PgBouncer in .env
+echo "ENABLE_PGBOUNCER=1" >> .env
+
+# Run the full test suite (includes PgBouncer tests)
+./test/run-tests.sh
+
+# Or run PgBouncer tests standalone
+./test/test-pgbouncer.sh
+#+END_SRC
+
+See `docs/PGBOUNCER_TESTING.md` for detailed testing documentation.
 
 ** Recent changes / gotchas
 

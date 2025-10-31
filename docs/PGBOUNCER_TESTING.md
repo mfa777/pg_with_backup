@@ -2,7 +2,35 @@
 
 This document describes how to test the optional PgBouncer connection pooling feature.
 
-## Prerequisites
+## Automated Testing
+
+The project includes an automated test suite for PgBouncer functionality. The tests are integrated into the main test runner and will automatically execute when `ENABLE_PGBOUNCER=1` is set.
+
+### Running Automated Tests
+
+```bash
+# Set ENABLE_PGBOUNCER=1 in your .env file
+echo "ENABLE_PGBOUNCER=1" >> .env
+
+# Run the main test suite (includes PgBouncer tests)
+./test/run-tests.sh
+
+# Or run PgBouncer tests standalone
+./test/test-pgbouncer.sh
+```
+
+The automated test suite validates:
+- PgBouncer process is running in the PostgreSQL container
+- PgBouncer is listening on the configured port (default 6432)
+- Connections through PgBouncer work correctly
+- Basic DDL operations (CREATE, INSERT, SELECT) work through PgBouncer
+- PgBouncer admin console is accessible
+- Connection pooling is functioning
+- PgBouncer configuration is properly applied
+
+## Manual Testing
+
+### Prerequisites
 
 - Docker installed and running
 - The postgres-walg image built from `Dockerfile.postgres-walg`
