@@ -46,6 +46,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backup
+      args:
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-18.0}
     restart: unless-stopped
     env_file: .env
     volumes:
