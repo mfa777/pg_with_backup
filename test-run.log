@@ -1,0 +1,39 @@
+Running tests in WAL (wal-g) backup mode...
+Running comprehensive WAL-G E2E tests...
+== Starting WAL-G End-to-End Testing ==
+== == FORCE_EMPTY_PGDATA=1: removing postgres-data volume and any previous compose state ==
+ Container ssh-server  Stopping
+ Container pg_with_backup-pgadmin-1  Stopping
+ Container pg_with_backup-backup-1  Stopping
+ Container pg_with_backup-pgadmin-1  Stopped
+ Container pg_with_backup-pgadmin-1  Removing
+ Container pg_with_backup-pgadmin-1  Removed
+ Container ssh-server  Stopped
+ Container ssh-server  Removing
+ Container ssh-server  Removed
+ Container pg_with_backup-backup-1  Stopped
+ Container pg_with_backup-backup-1  Removing
+ Container pg_with_backup-backup-1  Removed
+ Container postgres  Stopping
+ Container postgres  Stopped
+ Container postgres  Removing
+ Container postgres  Removed
+ Volume ssh-backups  Removing
+ Volume backup-state  Removing
+ Volume ssh-server-data  Removing
+ Volume pgadmin-data  Removing
+ Network postgres-network  Removing
+ Volume ssh-backups  Removed
+ Volume ssh-server-data  Removed
+ Volume backup-state  Removed
+ Volume pgadmin-data  Removed
+ Network postgres-network  Removed
+postgres-data
+PASS: postgres-data volume removed
+== == Preparing an empty postgres-data volume to avoid image population ==
+total 8
+drwxr-xr-x    2 root     root          4096 Oct 31 05:23 .
+drwxr-xr-x    1 root     root          4096 Oct 31 05:23 ..
+PASS: postgres-data prepared and emptied
+== == Cleaning remote backup storage to avoid LSN conflicts ==
+Warning: Permanently added '[u386836-sub2.your-storagebox.de]:23' (ED25519) to the list of known hosts.

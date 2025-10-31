@@ -791,6 +791,62 @@ main() {
   docker run --rm -v postgres-data:/data alpine:3.21 sh -c "rm -rf /data/* /data/.* 2>/dev/null || true; ls -la /data || true" || true
   pass "postgres-data prepared and emptied"
 
+  echof "== Cleaning remote backup storage to avoid LSN conflicts"
+  # Clean remote backups to prevent "finish LSN greater than current LSN" errors
+  # when the new database instance restarts with lower LSNs
+  local remote_path
+  remote_path=$(get_remote_backup_path)
+  if [[ -n "$remote_path" ]] && [[ -n "${WALG_SSH_PREFIX:-}" ]]; then
+      # Parse SSH connection details from WALG_SSH_PREFIX
+      local ssh_user ssh_host ssh_port
+      local _tmp=${WALG_SSH_PREFIX#ssh://}
+      local _userhost=${_tmp%%/*}
+      if [[ "$_userhost" == *@* ]]; then
+          ssh_user=${_userhost%%@*}
+          local _hostport=${_userhost#*@}
+          if [[ "$_hostport" == *:* ]]; then
+              ssh_port=${_hostport##*:}
+              ssh_host=${_hostport%%:*}
+          else
+              ssh_host=$_hostport
+              ssh_port=22
+          fi
+      else
+          ssh_user="${SSH_USER:-walg}"
+          ssh_host="$_userhost"
+          ssh_port=22
+      fi
+      
+      # Use WALG_SSH_TEST_PORT if set (for external SSH servers)
+      ssh_port="${WALG_SSH_TEST_PORT:-$ssh_port}"
+      
+      # Use local SSH key from secrets directory
+      local ssh_key_file="$SCRIPT_DIR/secrets/walg_ssh_key/id_rsa"
+      if [[ -f "$ssh_key_file" ]]; then
+          # Use SFTP to delete backup directories (compatible with restricted SSH servers like Hetzner)
+          # Create an SFTP batch file for cleanup
+          local sftp_batch=$(mktemp)
+          cat > "$sftp_batch" <<EOF
+-rm ${remote_path}/basebackups_*/*
+-rmdir ${remote_path}/basebackups_*
+-rm ${remote_path}/wal_*/*
+-rmdir ${remote_path}/wal_*
+bye
+EOF
+          # Execute SFTP batch (- prefix means ignore errors, so missing dirs don't fail)
+          if sftp -i "$ssh_key_file" -P "$ssh_port" -o StrictHostKeyChecking=no -o BatchMode=yes \
+              -b "$sftp_batch" "${ssh_user}@${ssh_host}" >/dev/null 2>&1; then
+              pass "Remote backup storage cleaned"
+          else
+              warn "Could not clean remote backup storage (may not exist yet or SFTP batch had issues)"
+          fi
+          rm -f "$sftp_batch"
+      else
+          warn "SSH key file not found at $ssh_key_file, skipping remote cleanup"
+      fi
+  else
+      skip "Remote backup path not configured, skipping remote cleanup"
+  fi
 
     fi
             # Restart the stack after cleanup

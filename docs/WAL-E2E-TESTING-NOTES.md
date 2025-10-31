@@ -11,20 +11,36 @@ This note captures the practical adjustments made to the end-to-end WAL-G test (
 - Docker-based test harness; WAL-G env prepared at `/var/lib/postgresql/.walg_env`
 - Archive command: `wal-g wal-push %p` with env sourced in a shell wrapper
 
-## Why the old test failed ("No new WAL files found")
+## Why the old test failed ("No new WAL files found" and "Finish LSN greater than current LSN")
+1) WAL Progress Detection:
 - The remote already contained many WAL segments. During the short test window, a naive "remote count delta must increase" heuristic may not visibly change even when archiving is working.
+
+2) LSN Conflicts with Stale Backups:
+- When FORCE_EMPTY_PGDATA=1 cleared local data but left remote backups, the new database instance restarted with lower LSN values.
+- WAL-G tried to create a delta backup from the previous backup (e.g., finish LSN 0/7000120), but the new instance's LSN had reset (e.g., 0/5000028).
+- Error: "Finish LSN of backup ... greater than current LSN"
+
+3) Restricted SSH Environment:
 - The restricted SSH environment disallows tools like `find` and `id`, so earlier remote enumeration pipelines were unreliable or broken.
 - `set -u` (nounset) plus fragile loops caused unbound variables and zero counts in some paths.
 
 ## What changed in the test
 File: `test/test-walg-e2e.sh`
 
-1) Restricted-SSH compatible remote enumeration
+1) Remote backup cleanup when FORCE_EMPTY_PGDATA=1
+- When the test forcibly empties the postgres-data volume, it now also cleans remote backups.
+- This prevents "Finish LSN of backup ... greater than current LSN" errors that occur when:
+  - Old backups exist on remote with higher LSN values
+  - New database instance starts with fresh/lower LSNs
+  - WAL-G attempts delta backup from outdated parent
+- Uses SFTP batch commands (compatible with Hetzner Storage Box restricted shell).
+
+2) Restricted-SSH compatible remote enumeration
 - Only uses portable commands supported by the Storage Box: `ls`, `grep`, `wc`, `head`, `tail`.
 - Enumerates `wal_*` subdirectories under the path derived from `WALG_SSH_PREFIX` and sums counts with `ls -1 | wc -l`.
 - Sanitizes directory names (strip CRs, trailing slashes) to avoid loop/pipeline glitches.
 
-2) Robust success criteria for WAL progress
+3) Robust success criteria for WAL progress
 The test now passes if any of the following are observed:
 - The count of "pure" WAL files on the remote increases, OR
 - `pg_stat_archiver.archived_count` increases, OR
@@ -32,7 +48,7 @@ The test now passes if any of the following are observed:
 
 This avoids false failures in environments with pre-populated storage or when absolute file counts are stable while archiver state advances.
 
-3) Stability improvements
+4) Stability improvements
 - Increased attempts and sleeps between WAL generation/checks.
 - Forces multiple `pg_switch_wal()` calls to trigger archival.
 - Simplified debug listings to avoid `set -u` unbound variable errors.
