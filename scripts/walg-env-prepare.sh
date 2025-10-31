@@ -60,6 +60,24 @@ prepare_ssh_key() {
 validate_walg_env() {
     echo "Validating wal-g environment..."
 
+    # Append PostgreSQL version to the SSH prefix path if POSTGRES_VERSION is set
+    if [ -n "${POSTGRES_VERSION:-}" ]; then
+        echo "PostgreSQL version detected: $POSTGRES_VERSION"
+        # Check if WALG_SSH_PREFIX ends with a slash, add version subdirectory
+        if [ -n "${WALG_SSH_PREFIX:-}" ]; then
+            # Extract the path component and add version subdirectory
+            if [[ "$WALG_SSH_PREFIX" =~ ^(ssh://[^/]+)(/.*)$ ]]; then
+                BASE_PREFIX="${BASH_REMATCH[1]}"
+                PATH_PART="${BASH_REMATCH[2]}"
+                # Remove trailing slash if present
+                PATH_PART="${PATH_PART%/}"
+                # Append version subdirectory
+                WALG_SSH_PREFIX="${BASE_PREFIX}${PATH_PART}/${POSTGRES_VERSION}"
+                echo "WAL-G SSH prefix updated to include version: $WALG_SSH_PREFIX"
+            fi
+        fi
+    fi
+
     # If using the built-in SSH server for tests, provide sensible defaults
     if [ "${ENABLE_SSH_SERVER:-0}" = "1" ]; then
         WALG_SSH_PREFIX="${WALG_SSH_PREFIX:-ssh://walg@ssh-server/backups}"
