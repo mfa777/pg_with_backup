@@ -47,7 +47,9 @@ RUN mkdir -p /opt/walg/scripts \
     && chown -R postgres:postgres /var/lib/postgresql/.ssh \
     && chmod 700 /var/lib/postgresql/.ssh \
     && mkdir -p /etc/pgbouncer \
-    && chown -R postgres:postgres /etc/pgbouncer
+    && mkdir -p /var/run/pgbouncer \
+    && mkdir -p /var/log/pgbouncer \
+    && chown -R postgres:postgres /etc/pgbouncer /var/run/pgbouncer /var/log/pgbouncer
 
 # Copy PostgreSQL configuration template
 COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template

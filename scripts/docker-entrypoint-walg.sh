@@ -69,7 +69,7 @@ if [ "$ENABLE_PGBOUNCER" = "1" ]; then
         for i in {1..30}; do
             if pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER:-postgres}" &>/dev/null; then
                 echo "PostgreSQL is ready, starting PgBouncer..."
-                su - postgres -c "pgbouncer -d /etc/pgbouncer/pgbouncer.ini"
+                su - postgres -c "/usr/sbin/pgbouncer -d /etc/pgbouncer/pgbouncer.ini"
                 echo "PgBouncer started successfully on port ${PGBOUNCER_PORT:-6432}"
                 break
             fi

@@ -20,3 +20,7 @@ server_check_delay = 30
 log_connections = 1
 log_disconnections = 1
 log_pooler_errors = 1
+pidfile = /var/run/pgbouncer/pgbouncer.pid
+logfile = /var/log/pgbouncer/pgbouncer.log
+unix_socket_dir = /var/run/postgresql
+
