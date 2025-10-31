@@ -19,6 +19,40 @@ if [[ -f "$ENV_FILE" ]]; then
     set +o allexport
 fi
 
+# Fast-mode tuning (inherited from wrapper). You can override via env.
+FAST=${FAST:-0}
+if [[ "$FAST" == "1" ]]; then
+    E2E_PG_READY_TIMEOUT=${E2E_PG_READY_TIMEOUT:-15}
+    E2E_SSH_READY_TIMEOUT=${E2E_SSH_READY_TIMEOUT:-15}
+    E2E_INIT_SLEEP=${E2E_INIT_SLEEP:-2}
+    E2E_STACK_INIT_WAIT=${E2E_STACK_INIT_WAIT:-5}
+    E2E_WAL_ATTEMPTS=${E2E_WAL_ATTEMPTS:-3}
+    E2E_INSERT_ROWS=${E2E_INSERT_ROWS:-500}
+    E2E_SLEEP_BETWEEN=${E2E_SLEEP_BETWEEN:-2}
+    E2E_FINAL_SLEEP=${E2E_FINAL_SLEEP:-5}
+    E2E_BACKUP_WAIT1=${E2E_BACKUP_WAIT1:-6}
+    E2E_SHORT_WAL_WAIT=${E2E_SHORT_WAL_WAIT:-2}
+    E2E_BACKUP_WAIT2=${E2E_BACKUP_WAIT2:-6}
+    E2E_CLEANUP_WAIT=${E2E_CLEANUP_WAIT:-4}
+    E2E_TIMEOUT_SHORT=${E2E_TIMEOUT_SHORT:-5}
+    E2E_TIMEOUT_LONG=${E2E_TIMEOUT_LONG:-7}
+else
+    E2E_PG_READY_TIMEOUT=${E2E_PG_READY_TIMEOUT:-30}
+    E2E_SSH_READY_TIMEOUT=${E2E_SSH_READY_TIMEOUT:-30}
+    E2E_INIT_SLEEP=${E2E_INIT_SLEEP:-5}
+    E2E_STACK_INIT_WAIT=${E2E_STACK_INIT_WAIT:-10}
+    E2E_WAL_ATTEMPTS=${E2E_WAL_ATTEMPTS:-8}
+    E2E_INSERT_ROWS=${E2E_INSERT_ROWS:-5000}
+    E2E_SLEEP_BETWEEN=${E2E_SLEEP_BETWEEN:-6}
+    E2E_FINAL_SLEEP=${E2E_FINAL_SLEEP:-12}
+    E2E_BACKUP_WAIT1=${E2E_BACKUP_WAIT1:-15}
+    E2E_SHORT_WAL_WAIT=${E2E_SHORT_WAL_WAIT:-5}
+    E2E_BACKUP_WAIT2=${E2E_BACKUP_WAIT2:-15}
+    E2E_CLEANUP_WAIT=${E2E_CLEANUP_WAIT:-10}
+    E2E_TIMEOUT_SHORT=${E2E_TIMEOUT_SHORT:-10}
+    E2E_TIMEOUT_LONG=${E2E_TIMEOUT_LONG:-15}
+fi
+
 # Derive SSH connection parameters:
 # - If ENABLE_SSH_SERVER=1 -> internal container hostname is 'ssh-server', default user 'walg', default port 2222
 # - Else try to parse from WALG_SSH_PREFIX (ssh://user@host[:port]/path)
@@ -122,7 +156,7 @@ wait_for_services() {
     echof "Waiting for services to be ready"
     
     # Wait for PostgreSQL
-    local timeout=30
+    local timeout=$E2E_PG_READY_TIMEOUT
     local count=0
     while ! docker exec "$POSTGRES_CONTAINER_ID" pg_isready -U "$POSTGRES_USER" >/dev/null 2>&1; do
         if ((count++ > timeout)); then
@@ -139,8 +173,8 @@ wait_for_services() {
     if [[ "${ENABLE_SSH_SERVER:-0}" == "1" ]]; then
         count=0
         while ! docker exec "$SSH_CONTAINER_ID" netstat -ln | grep -q ":${SSH_PORT} "; do
-            if ((count++ > 30)); then
-                die "SSH server failed to become ready within 30 seconds"
+            if ((count++ > E2E_SSH_READY_TIMEOUT)); then
+                die "SSH server failed to become ready within $E2E_SSH_READY_TIMEOUT seconds"
             fi
             sleep 1
         done
@@ -168,7 +202,7 @@ wait_for_services() {
     fi
     
     # Give a moment for wal-g initialization
-    sleep 5
+    sleep "$E2E_INIT_SLEEP"
 }
 
 # Test if we can list remote backups (baseline)
@@ -356,18 +390,18 @@ test_wal_push_e2e() {
     local initial_archived_count initial_last_wal now_archived_count now_last_wal
     initial_archived_count=$(get_archiver_stat archived_count || echo 0)
     initial_last_wal=$(get_archiver_stat last_archived_wal || echo "")
-    local max_attempts=8
+    local max_attempts=$E2E_WAL_ATTEMPTS
     local target=$((initial_pure_wal_count + 1))
     while (( attempts < max_attempts )); do
         attempts=$((attempts + 1))
         echo "[WAL GEN] Attempt $attempts: inserting rows and forcing switch"
         docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -v ON_ERROR_STOP=1 -c "
             CREATE TABLE IF NOT EXISTS wal_test_table (id SERIAL PRIMARY KEY, data TEXT);
-            INSERT INTO wal_test_table (data) SELECT 'test_data_' || generate_series(1, 5000);
+            INSERT INTO wal_test_table (data) SELECT 'test_data_' || generate_series(1, ${E2E_INSERT_ROWS});
             SELECT pg_switch_wal();
         " >/dev/null 2>&1 || echo "Insert/switch attempt $attempts failed (continuing)"
-    # Short wait to allow archiver to pick up the switched segment
-        sleep 6
+        # Short wait to allow archiver to pick up the switched segment
+        sleep "$E2E_SLEEP_BETWEEN"
         current_after_gen=$(get_remote_wal_count)
         current_after_pure=$(get_remote_pure_wal_count)
         now_archived_count=$(get_archiver_stat archived_count || echo 0)
@@ -397,7 +431,7 @@ test_wal_push_e2e() {
     if (( current_after_pure <= initial_pure_wal_count )); then
         echo "No new WAL yet; performing final forced switch & extended wait"
         docker exec "$POSTGRES_CONTAINER_ID" psql -U "$POSTGRES_USER" -c "SELECT pg_switch_wal(); SELECT pg_switch_wal();" >/dev/null 2>&1 || true
-        sleep 12
+        sleep "$E2E_FINAL_SLEEP"
     fi
     
     # Check if new WAL files appeared
@@ -505,7 +539,7 @@ test_backup_push_e2e() {
     docker exec "$BACKUP_CONTAINER_ID" bash -c "/opt/walg/scripts/wal-g-runner.sh backup" || die "First backup execution failed"
     
     # Wait for backup to complete
-    sleep 15
+    sleep "$E2E_BACKUP_WAIT1"
     
     # Check if new backup appeared
     local after_first_backup_count
@@ -537,13 +571,13 @@ test_backup_push_e2e() {
         " >/dev/null 2>&1
         
         # Wait a bit for WAL activity
-        sleep 5
+    sleep "$E2E_SHORT_WAL_WAIT"
         
         echo "Creating second backup..."
         docker exec "$BACKUP_CONTAINER_ID" bash -c "/opt/walg/scripts/wal-g-runner.sh backup" || warn "Second backup failed (not critical)"
         
         # Wait for second backup
-        sleep 15
+    sleep "$E2E_BACKUP_WAIT2"
         
         local final_backup_count
         final_backup_count=$(get_backup_count)
@@ -590,7 +624,7 @@ test_delete_e2e() {
     docker exec "$BACKUP_CONTAINER_ID" bash -c "/opt/walg/scripts/wal-g-runner.sh clean" || warn "Cleanup execution had issues (may be normal)"
     
     # Wait for cleanup to complete
-    sleep 10
+    sleep "$E2E_CLEANUP_WAIT"
     
     # Check if retention policy was applied
     local final_backup_count
@@ -666,7 +700,7 @@ test_recovery_capability() {
                     # First, test with an invalid backup name to verify the command works
                     echo "Testing backup-fetch command syntax..."
                     local fetch_test_result
-                    fetch_test_result=$(docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; timeout 10 wal-g backup-fetch $temp_dir nonexistent_backup 2>&1'" 2>/dev/null || echo "timeout_or_error")
+                    fetch_test_result=$(docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; timeout ${E2E_TIMEOUT_SHORT} wal-g backup-fetch $temp_dir nonexistent_backup 2>&1'" 2>/dev/null || echo "timeout_or_error")
                     
                     if echo "$fetch_test_result" | grep -q "backup.*not found\|backup.*does not exist\|ERROR.*backup"; then
                         pass "backup-fetch command correctly validates backup names"
@@ -679,7 +713,7 @@ test_recovery_capability() {
                     # Test if we can start a backup-fetch process (with timeout to avoid hanging)
                     echo "Testing backup-fetch with latest backup (with timeout)..."
                     local backup_fetch_test
-                    backup_fetch_test=$(timeout 15 docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g backup-fetch $temp_dir $latest_backup 2>&1'" 2>/dev/null || echo "timeout_or_interrupted")
+                    backup_fetch_test=$(timeout ${E2E_TIMEOUT_LONG} docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g backup-fetch $temp_dir $latest_backup 2>&1'" 2>/dev/null || echo "timeout_or_interrupted")
                     
                     if echo "$backup_fetch_test" | grep -q "timeout_or_interrupted"; then
                         pass "backup-fetch operation started successfully (interrupted due to timeout - normal for testing)"
@@ -704,7 +738,7 @@ test_recovery_capability() {
                     # Try to list available WAL files for this backup (with timeout)
                     echo "Checking available WAL files..."
                     local wal_list
-                    wal_list=$(timeout 10 docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g wal-show'" 2>/dev/null | head -5 || echo "")
+                    wal_list=$(timeout ${E2E_TIMEOUT_SHORT} docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g wal-show'" 2>/dev/null | head -5 || echo "")
                     if [[ -n "$wal_list" ]]; then
                         pass "WAL files available for recovery"
                         echo "Sample WAL files (first 5):"
@@ -716,7 +750,7 @@ test_recovery_capability() {
                         first_wal_segment=$(echo "$wal_list" | grep -o '[0-9A-F]\{24\}' | head -1 || echo "")
                         if [[ -n "$first_wal_segment" ]]; then
                             local wal_fetch_test
-                            wal_fetch_test=$(timeout 5 docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g wal-fetch nonexistent_wal /tmp/test_wal_output 2>&1'" 2>/dev/null || echo "timeout_or_error")
+                            wal_fetch_test=$(timeout ${E2E_TIMEOUT_SHORT} docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g wal-fetch nonexistent_wal /tmp/test_wal_output 2>&1'" 2>/dev/null || echo "timeout_or_error")
                             if echo "$wal_fetch_test" | grep -q "not found\|does not exist\|ERROR"; then
                                 pass "wal-fetch command correctly validates WAL file names"
                             else
@@ -732,7 +766,7 @@ test_recovery_capability() {
                 
                 # Show backup details if available (with timeout)
                 echo "Backup details:"
-                timeout 10 docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g backup-list --detail'" 2>/dev/null | head -10 || echo "Detailed backup info not available or timed out"
+                timeout ${E2E_TIMEOUT_SHORT} docker exec "$POSTGRES_CONTAINER_ID" bash -c "su - postgres -c 'source /var/lib/postgresql/.walg_env >/dev/null 2>&1 || true; wal-g backup-list --detail'" 2>/dev/null | head -10 || echo "Detailed backup info not available or timed out"
                 
             else
                 warn "Could not extract backup name from backup list"
@@ -851,8 +885,8 @@ EOF
     fi
             # Restart the stack after cleanup
         echof "Restarting stack after volume cleanup"
-        $COMPOSE_CMD --profile ssh-testing up --build -d
-        sleep 10  # Give more time for initialization after cleanup
+    $COMPOSE_CMD --profile ssh-testing up --build -d
+    sleep "$E2E_STACK_INIT_WAIT"  # Give more time for initialization after cleanup
     
     # Verify stack is running
     if ! $COMPOSE_CMD ps "$POSTGRES_SERVICE_NAME" >/dev/null 2>&1; then

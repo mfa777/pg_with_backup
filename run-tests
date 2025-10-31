@@ -34,9 +34,10 @@ Usage: $(basename "$0") [options] [-- extra-args]
 
 Options:
 		-q, --quiet            Reduce output from this wrapper and child scripts
-		-f, --fast, --quick    Faster smoke run (skips heavy WAL-G E2E)
-														Default: fast (use --e2e to run full WAL-G E2E)
-				--e2e, --full      Force full E2E (disables fast mode)
+		-f, --fast, --quick    Faster run (skips heavy WAL-G E2E in basic mode)
+											Default: fast. Combine with --e2e for fast E2E.
+				--e2e              Run WAL-G E2E (respects --fast unless --full is used)
+				--full             Run full WAL-G E2E (disables fast mode)
 			--mode <sql|wal>   Override BACKUP_MODE
 			--reuse            Skip environment cleanup for faster re-runs
 			--no-cleanup       Alias for --reuse
@@ -75,7 +76,10 @@ while [[ $# -gt 0 ]]; do
 		-f|--fast|--quick)
 			FAST=1
 			;;
-		--e2e|--full)
+		--e2e)
+			E2E=1
+			;;
+		--full)
 			E2E=1
 			FAST=0
 			;;
