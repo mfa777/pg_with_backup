@@ -29,6 +29,8 @@ services:
       SSH_USERNAME: "${SSH_USERNAME:-}"
     ports:
       # Expose PgBouncer port if enabled (default 6432)
+      # Note: Port is exposed in docker-compose but PgBouncer only runs when ENABLE_PGBOUNCER=1
+      # When disabled, nothing listens on this port so it's harmless
       - "${PGBOUNCER_HOST_PORT:-6432}:${PGBOUNCER_PORT:-6432}"
     volumes:
       - pg_data:/var/lib/postgresql/data

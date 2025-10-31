@@ -29,9 +29,9 @@ sed -i "s/default_pool_size = .*/default_pool_size = ${PGBOUNCER_DEFAULT_POOL_SI
 # Format: "username" "md5_hash_of_password"
 # The hash is md5(password + username)
 if [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ]; then
-    # Calculate MD5 hash for PgBouncer auth
+    # Calculate MD5 hash for PgBouncer auth using printf to avoid exposing password in process list
     # PgBouncer expects: "md5" + md5(password + username)
-    HASH=$(echo -n "${POSTGRES_PASSWORD}${POSTGRES_USER}" | md5sum | cut -d' ' -f1)
+    HASH=$(printf '%s%s' "${POSTGRES_PASSWORD}" "${POSTGRES_USER}" | md5sum | cut -d' ' -f1)
     echo "\"${POSTGRES_USER}\" \"md5${HASH}\"" > /etc/pgbouncer/userlist.txt
     chown postgres:postgres /etc/pgbouncer/userlist.txt
     chmod 600 /etc/pgbouncer/userlist.txt

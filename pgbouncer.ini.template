@@ -1,4 +1,7 @@
 [databases]
+# Wildcard allows PgBouncer to pool connections to any database on the PostgreSQL instance
+# This provides maximum flexibility - clients can connect to any database through PgBouncer
+# To restrict to specific databases, replace * with: dbname = host=127.0.0.1 port=5432
 * = host=127.0.0.1 port=5432
 
 [pgbouncer]
