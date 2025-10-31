@@ -13,6 +13,25 @@ TZ=Asia/Shanghai
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_very_strong_superuser_password
 
+# --- PgBouncer Connection Pooling (Optional) ---
+# Enable PgBouncer connection pooler: 0 (disabled, default) or 1 (enabled)
+ENABLE_PGBOUNCER=0
+
+# PgBouncer listen port (default: 6432)
+PGBOUNCER_PORT=6432
+
+# Host port to expose PgBouncer (default: 6432)
+PGBOUNCER_HOST_PORT=6432
+
+# Pool mode: session (default), transaction, or statement
+PGBOUNCER_POOL_MODE=session
+
+# Maximum number of client connections
+PGBOUNCER_MAX_CLIENT_CONN=100
+
+# Default pool size per user/database pair
+PGBOUNCER_DEFAULT_POOL_SIZE=20
+
 # --- Docker Configuration Based on Mode ---
 # For SQL mode (default):
 # These are used when BACKUP_MODE=sql

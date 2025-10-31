@@ -9,6 +9,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       BACKUP_MODE: ${BACKUP_MODE:-sql}
+      # PgBouncer settings (optional connection pooling)
+      ENABLE_PGBOUNCER: ${ENABLE_PGBOUNCER:-0}
+      PGBOUNCER_PORT: ${PGBOUNCER_PORT:-6432}
+      PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-session}
+      PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-100}
+      PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
       # wal-g environment variables (only used when BACKUP_MODE=wal)
       WALG_SSH_PREFIX: ${WALG_SSH_PREFIX:-}
       WALG_SSH_PRIVATE_KEY: ${WALG_SSH_PRIVATE_KEY:-}
@@ -21,6 +27,9 @@ services:
       # Explicit SSH variables recognized by wal-g (v3) CLI
       SSH_PORT: "${SSH_PORT:-}"
       SSH_USERNAME: "${SSH_USERNAME:-}"
+    ports:
+      # Expose PgBouncer port if enabled (default 6432)
+      - "${PGBOUNCER_HOST_PORT:-6432}:${PGBOUNCER_PORT:-6432}"
     volumes:
       - pg_data:/var/lib/postgresql/data
       # Conditionally mount SSH key (create empty file if not exists)

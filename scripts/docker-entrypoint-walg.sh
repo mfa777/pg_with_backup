@@ -57,6 +57,28 @@ if command -v wal-g &> /dev/null; then
     echo "wal-g version: $(wal-g --version)"
 fi
 
+# Setup PgBouncer if enabled
+if [ "$ENABLE_PGBOUNCER" = "1" ]; then
+    echo "PgBouncer is enabled, setting up configuration..."
+    /opt/scripts/setup-pgbouncer.sh
+    
+    # Create a background process to start PgBouncer after PostgreSQL is ready
+    (
+        echo "Waiting for PostgreSQL to be ready before starting PgBouncer..."
+        # Wait for PostgreSQL to be ready
+        for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER:-postgres}" &>/dev/null; then
+                echo "PostgreSQL is ready, starting PgBouncer..."
+                su - postgres -c "pgbouncer -d /etc/pgbouncer/pgbouncer.ini"
+                echo "PgBouncer started successfully on port ${PGBOUNCER_PORT:-6432}"
+                break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+        done
+    ) &
+fi
+
 # Find and call the original PostgreSQL entrypoint
 if [ -f "/usr/local/bin/docker-entrypoint.sh" ]; then
     exec /usr/local/bin/docker-entrypoint.sh "$@"

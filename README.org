@@ -11,6 +11,7 @@ Cleanup Status: Legacy duplicate files (extra compose, simple Dockerfiles, old e
 ** Features
 
 - PostgreSQL Database (version 17 with pg_vector extension)
+- **Optional PgBouncer connection pooling** for improved connection management
 - **Dual backup modes**: SQL (default) or WAL-G incremental backups
 - **SQL Mode**: Daily pg_dumpall backups with Age encryption and Rclone upload
 - **WAL Mode**: Continuous WAL archiving + periodic base backups with wal-g over SSH
@@ -79,6 +80,46 @@ REMOTE_PATH=your_rclone_remote:path/to/backups
    WALG_BASEBACKUP_CRON="30 1 * * *"  # Daily base backup at 1:30 AM
    WALG_CLEAN_CRON="15 3 * * *"       # Cleanup at 3:15 AM
    #+end_src
+
+** PgBouncer Connection Pooling (Optional)
+
+PgBouncer is a lightweight connection pooler for PostgreSQL that can significantly improve performance under high connection load.
+
+*** Enabling PgBouncer
+
+1. *Enable in .env file:*
+   #+begin_src bash
+   ENABLE_PGBOUNCER=1
+   PGBOUNCER_PORT=6432           # Default port for PgBouncer
+   PGBOUNCER_HOST_PORT=6432      # Host port to expose
+   #+end_src
+
+2. *Configure pool settings (optional):*
+   #+begin_src bash
+   PGBOUNCER_POOL_MODE=session            # session, transaction, or statement
+   PGBOUNCER_MAX_CLIENT_CONN=100          # Maximum client connections
+   PGBOUNCER_DEFAULT_POOL_SIZE=20         # Pool size per user/database pair
+   #+end_src
+
+3. *Restart the stack:*
+   #+begin_src bash
+   docker compose down
+   docker compose up --build -d
+   #+end_src
+
+*** Connecting Through PgBouncer
+
+When PgBouncer is enabled, connect to port 6432 instead of 5432:
+
+#+begin_src sh
+# Direct PostgreSQL connection (always available)
+psql -h localhost -p 5432 -U your_db_user -d your_db
+
+# Through PgBouncer (when ENABLE_PGBOUNCER=1)
+psql -h localhost -p 6432 -U your_db_user -d your_db
+#+end_src
+
+*Note:* PgBouncer is completely optional. When disabled (default), the system works exactly as before with direct PostgreSQL connections.
 
 ** Accessing the Database
 
