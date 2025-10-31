@@ -1,4 +1,4 @@
-FROM postgres:17
+FROM postgres:17.6
 
 # Set argument for wal-g version
 ARG WALG_VERSION=v3.0.7
@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     git \
     build-essential \
+    pgbouncer \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install wal-g
@@ -40,21 +41,30 @@ RUN set -eux; \
 
 # Create necessary directories
 RUN mkdir -p /opt/walg/scripts \
+    && mkdir -p /opt/scripts \
     && mkdir -p /etc/postgresql \
     && mkdir -p /var/lib/postgresql/.ssh \
     && chown -R postgres:postgres /var/lib/postgresql/.ssh \
-    && chmod 700 /var/lib/postgresql/.ssh
+    && chmod 700 /var/lib/postgresql/.ssh \
+    && mkdir -p /etc/pgbouncer \
+    && mkdir -p /var/run/pgbouncer \
+    && mkdir -p /var/log/pgbouncer \
+    && chown -R postgres:postgres /etc/pgbouncer /var/run/pgbouncer /var/log/pgbouncer
 
 # Copy PostgreSQL configuration template
 COPY postgresql.conf.template /etc/postgresql/postgresql.conf.template
+
+# Copy PgBouncer configuration template
+COPY pgbouncer.ini.template /etc/pgbouncer/pgbouncer.ini.template
 
 # Copy wal-g scripts
 COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
 COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
 COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
+COPY scripts/setup-pgbouncer.sh /opt/scripts/setup-pgbouncer.sh
 
 # Make scripts executable
-RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh
+RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh /opt/scripts/setup-pgbouncer.sh
 
 # Build and install pgvector extension (optional - skip if build fails)
 RUN set -eux; \

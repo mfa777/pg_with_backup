@@ -98,11 +98,11 @@ test_backup_push() {
             return
         fi
         
-        # Test if backup runner can be invoked (dry run)
-        if docker exec "$BACKUP_CONTAINER_ID" bash -c "/opt/walg/scripts/wal-g-runner.sh --help 2>/dev/null || echo 'backup runner exists'"; then
-            pass "wal-g-runner.sh script is executable"
+        # Quiet existence/executable check without invoking the runner (avoids noisy logs)
+        if docker exec "$BACKUP_CONTAINER_ID" bash -c "test -x /opt/walg/scripts/wal-g-runner.sh" >/dev/null 2>&1; then
+            pass "wal-g-runner.sh script is present and executable"
         else
-            skip "wal-g-runner.sh script execution test failed"
+            skip "wal-g-runner.sh is not executable"
         fi
         
         # Check if cron job for backup is configured
@@ -153,12 +153,17 @@ test_delete_functionality() {
             skip "Cron job for cleanup/delete not found"
         fi
         
-        # Test cleanup script functionality
+        # Test cleanup availability non-invasively (grep the 'clean)' case label)
         if docker exec "$BACKUP_CONTAINER_ID" test -f "/opt/walg/scripts/wal-g-runner.sh"; then
-            if docker exec "$BACKUP_CONTAINER_ID" bash -c "/opt/walg/scripts/wal-g-runner.sh clean --help 2>/dev/null || echo 'cleanup mode exists'"; then
-                pass "wal-g-runner.sh cleanup mode is available"
+            if docker exec "$BACKUP_CONTAINER_ID" bash -c "grep -q '^\s*clean)\s*$' /opt/walg/scripts/wal-g-runner.sh" >/dev/null 2>&1; then
+                pass "wal-g-runner.sh includes 'clean' mode handler"
             else
-                skip "wal-g-runner.sh cleanup mode test failed"
+                # Fallback: broader grep in case formatting differs
+                if docker exec "$BACKUP_CONTAINER_ID" bash -c "grep -q 'clean)' /opt/walg/scripts/wal-g-runner.sh" >/dev/null 2>&1; then
+                    pass "wal-g-runner.sh likely supports 'clean' mode"
+                else
+                    skip "Could not verify 'clean' mode in wal-g-runner.sh"
+                fi
             fi
         else
             skip "wal-g-runner.sh not found for cleanup testing"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Smart wrapper for running integration tests (keeps backward compatibility)
-# - In BACKUP_MODE=wal it will generate a local SSH key under secrets/walg_ssh_key
+# - In BACKUP_MODE=wal it can provision a local SSH key under secrets/walg_ssh_key
 #   so the postgres wal-g setup can proceed in the test container.
-# - It chooses sensible environment flags depending on BACKUP_MODE.
+# - Adds fast/quiet flags to speed local iterations and reduce noisy output.
 
 set -euo pipefail
 
@@ -14,29 +14,115 @@ if [[ ! -f "$TEST_SCRIPT" ]]; then
 	exit 2
 fi
 
+# Defaults (can be overridden by flags)
+QUIET=${QUIET:-0}
+# Default to FAST=1 for quicker local runs; use --e2e to force full
+FAST=${FAST:-1}           # When 1, skip heavyweight E2E flows when possible (default)
+E2E=${E2E:-0}             # Force running heavyweight E2E
+REUSE=${REUSE:-0}         # When 1, do not cleanup containers/volumes
+
+print() {
+	# print only when not in quiet mode
+	if [[ "$QUIET" != "1" ]]; then
+		echo "$@"
+	fi
+}
+
+usage() {
+	cat <<EOF
+Usage: $(basename "$0") [options] [-- extra-args]
+
+Options:
+		-q, --quiet            Reduce output from this wrapper and child scripts
+		-f, --fast, --quick    Faster run (skips heavy WAL-G E2E in basic mode)
+											Default: fast. Combine with --e2e for fast E2E.
+				--e2e              Run WAL-G E2E (respects --fast unless --full is used)
+				--full             Run full WAL-G E2E (disables fast mode)
+			--mode <sql|wal>   Override BACKUP_MODE
+			--reuse            Skip environment cleanup for faster re-runs
+			--no-cleanup       Alias for --reuse
+	-h, --help             Show this help
+
+Environment:
+	BACKUP_MODE=sql|wal    Default test mode (falls back to .env, then sql)
+	QUIET=1                Same as --quiet
+	FAST=1                 Same as --fast
+	E2E=1                  Same as --e2e
+	REUSE=1                Same as --reuse
+
+Examples:
+	BACKUP_MODE=wal $0 --fast --quiet
+	$0 --mode sql -q --reuse
+EOF
+}
+
 # Determine mode from environment or .env
 BACKUP_MODE="${BACKUP_MODE:-}"
 if [[ -z "$BACKUP_MODE" && -f "$SCRIPT_DIR/.env" ]]; then
 	# shellcheck disable=SC1090
-	# Source .env into the current shell so exported values (like BACKUP_MODE)
-	# are available to this script. We temporarily enable allexport so simple
-	# KEY=VALUE lines are exported as environment variables.
 	set -o allexport
 	source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true
 	set +o allexport
 	BACKUP_MODE="${BACKUP_MODE:-}"
 fi
 
+# Parse CLI flags
+PASS_ARGS=()
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-q|--quiet)
+			QUIET=1
+			;;
+		-f|--fast|--quick)
+			FAST=1
+			;;
+		--e2e)
+			E2E=1
+			;;
+		--full)
+			E2E=1
+			FAST=0
+			;;
+		--mode)
+			BACKUP_MODE="${2:-}"
+			shift || true
+			;;
+		--mode=*)
+			BACKUP_MODE="${1#*=}"
+			;;
+		--reuse|--no-cleanup)
+			REUSE=1
+			;;
+		-h|--help)
+			usage
+			exit 0
+			;;
+		--)
+			shift
+			PASS_ARGS+=("$@")
+			break
+			;;
+		*)
+			PASS_ARGS+=("$1")
+			;;
+	esac
+	shift || true
+done
+
+# Child scripts can honor these too
+export QUIET FAST E2E REUSE
+
 run_sql_mode() {
-	echo "Running tests in SQL backup mode..."
-	# keep simple invocation for SQL mode
-	BACKUP_MODE=sql CLEANUP=1 "$TEST_SCRIPT" "$@"
+	print "Running tests in SQL backup mode..."
+	local cleanup_flag
+	cleanup_flag=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1)
+	BACKUP_MODE=sql CLEANUP="$cleanup_flag" "$TEST_SCRIPT" "${PASS_ARGS[@]}"
 }
 
 run_wal_mode() {
-	echo "Running tests in WAL (wal-g) backup mode..."
+	print "Running tests in WAL (wal-g) backup mode..."
 
-	# If ENABLE_SSH_SERVER=1 (explicit) then setup local ssh server, else rely on existing WALG_SSH_PREFIX
+	# If ENABLE_SSH_SERVER=1 then setup local ssh server, else rely on existing WALG_SSH_PREFIX
 	ENABLE_SSH_SERVER_VAL="${ENABLE_SSH_SERVER:-}"; export ENABLE_SSH_SERVER_VAL
 	if [[ -z "$ENABLE_SSH_SERVER_VAL" && -f "$SCRIPT_DIR/.env" ]]; then
 		set -o allexport; source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true; set +o allexport
@@ -44,13 +130,12 @@ run_wal_mode() {
 	fi
 
 	if [[ "$ENABLE_SSH_SERVER_VAL" == "1" ]]; then
-		echo "ENABLE_SSH_SERVER=1 -> provisioning internal ssh-server for tests" 
+		print "ENABLE_SSH_SERVER=1 -> provisioning internal ssh-server for tests"
 		"$SCRIPT_DIR/scripts/setup-local-ssh.sh"
-		echo "Local SSH server environment prepared."
+		print "Local SSH server environment prepared."
 	else
 		# Ensure WALG_SSH_PREFIX present unless internal server is requested later
 		if [[ -z "${WALG_SSH_PREFIX:-}" ]]; then
-			# Attempt to load from .env
 			if [[ -f "$SCRIPT_DIR/.env" ]]; then
 				set -o allexport; source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true; set +o allexport
 			fi
@@ -60,49 +145,50 @@ run_wal_mode() {
 			echo "Hint: run scripts/setup-local-ssh.sh or set ENABLE_SSH_SERVER=1 for an embedded test server" >&2
 			exit 4
 		fi
-		# Auto derive SSH_PORT if absent and prefix encodes a port; else keep user config (no forced 2222)
 	fi
-	
-	# Step 2: Clean up any existing containers and volumes to avoid conflicts
-	# echo "Cleaning up any existing containers and volumes..."
-	# docker compose --profile ssh-testing down -v 2>/dev/null || true
-	# if docker volume ls --format '{{.Name}}' | grep -q '^postgres-data$'; then
-	# 	docker volume rm postgres-data 2>/dev/null || true
-	# 	echo "Removed existing postgres-data volume"
-	# fi
-	
-	# Step 3: Start the stack with SSH server using temporary containers
-	#echo "Starting stack with SSH server for testing..."
-	#docker compose --profile ssh-testing up --build -d
-	#echo "Docker stack started with SSH testing profile."
-	
-	# Step 4: Run comprehensive E2E tests
-	echo "Running comprehensive WAL-G E2E tests..."
-	if [[ -f "$SCRIPT_DIR/test/test-walg-e2e.sh" ]]; then
-		FORCE_EMPTY_PGDATA=1 CLEANUP=1 "$SCRIPT_DIR/test/test-walg-e2e.sh" "$@"
+
+		# Choose between full E2E and faster basic run
+		if [[ "$FAST" == "1" && "$E2E" != "1" ]]; then
+			print "Fast mode: running basic WAL-G tests (skip heavy E2E). Use --e2e for full run."
+			FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
+				"$TEST_SCRIPT" "${PASS_ARGS[@]}"
+		else
+			print "Running comprehensive WAL-G E2E tests..."
+			if [[ -f "$SCRIPT_DIR/test/test-walg-e2e.sh" ]]; then
+				FORCE_EMPTY_PGDATA=1 CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
+					"$SCRIPT_DIR/test/test-walg-e2e.sh" "${PASS_ARGS[@]}"
+			else
+				print "WAL-G E2E test script not found, falling back to basic tests..."
+				FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
+					"$TEST_SCRIPT" "${PASS_ARGS[@]}"
+			fi
+		fi
+
+	# Clean up test environment unless reusing
+	if [[ "$REUSE" != "1" ]]; then
+		print "Cleaning up test environment..."
+		if [[ "$QUIET" == "1" ]]; then
+			docker compose --profile ssh-testing down -v >/dev/null 2>&1 || true
+		else
+			docker compose --profile ssh-testing down -v || true
+		fi
+		print "Test environment cleaned up."
 	else
-		echo "WAL-G E2E test script not found, falling back to basic tests..."
-		# Fallback to basic test runner with wal-g specific settings
-		FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=1 "$TEST_SCRIPT" "$@"
+		print "Reuse enabled: keeping environment for faster subsequent runs."
 	fi
-	
-	# Step 5: Clean up test environment (volumes and containers)
-	echo "Cleaning up test environment..."
-	docker compose --profile ssh-testing down -v
-	echo "Test environment cleaned up."
 }
 
 case "$BACKUP_MODE" in
 	wal|WAL|Wal)
-		run_wal_mode "$@"
+		run_wal_mode
 		;;
 	sql|SQL|Sql)
-		run_sql_mode "$@"
+		run_sql_mode
 		;;
 	"")
 		# Default to SQL mode for safety if not specified
-		echo "No BACKUP_MODE detected; defaulting to SQL mode (safer)." >&2
-		run_sql_mode "$@"
+		print "No BACKUP_MODE detected; defaulting to SQL mode (safer)."
+		run_sql_mode
 		;;
 	*)
 		echo "Unknown BACKUP_MODE='$BACKUP_MODE' - please set BACKUP_MODE=sql or wal" >&2
