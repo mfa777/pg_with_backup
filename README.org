@@ -131,6 +131,49 @@ psql -h localhost -p 6432 -U your_db_user -d your_db
 
 *Note:* PgBouncer is completely optional. When disabled (default), the system works exactly as before with direct PostgreSQL connections.
 
+*** PgBouncer authentication and recommended user
+
+By default, PgBouncer is configured with md5 authentication and only the =POSTGRES_USER= from your =.env= is added to =/etc/pgbouncer/userlist.txt=. We recommend using this =POSTGRES_USER= to connect through PgBouncer.
+
+- Recommended connection (through PgBouncer):
+  #+begin_src bash
+  # assuming .env defines POSTGRES_USER and POSTGRES_DB
+  PGPASSWORD="$POSTGRES_PASSWORD" psql -h localhost -p ${PGBOUNCER_PORT-6432} -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+  #+end_src
+
+If you need to connect via PgBouncer using another PostgreSQL role, you must add that user to =userlist.txt= with an md5 hash in the PgBouncer format.
+
+Steps to allow another user (e.g., =appuser=) to connect via PgBouncer:
+
+1. Create the user in PostgreSQL (inside the container or any psql client):
+   #+begin_src sql
+   CREATE USER appuser WITH PASSWORD 'appsecret' LOGIN;
+   GRANT CONNECT ON DATABASE postgres TO appuser;     -- adjust DB as needed
+   #+end_src
+
+2. Compute PgBouncer md5 password: "md5" + md5(password + username). For example:
+   #+begin_src bash
+   # On your host
+   HASH=$(printf "%s" "appsecretappuser" | md5sum | awk '{print $1}')
+   echo "$HASH"
+   #+end_src
+
+3. Append the user to PgBouncer's =userlist.txt= inside the PostgreSQL container and restart PgBouncer:
+   #+begin_src bash
+   # Replace <container_name> if different (default is "postgres")
+   docker exec -u root postgres bash -c 'echo "\"appuser\" \"md5'"$HASH"'\"" >> /etc/pgbouncer/userlist.txt && chown postgres:postgres /etc/pgbouncer/userlist.txt && chmod 600 /etc/pgbouncer/userlist.txt'
+   # Option A: restart the whole container
+   docker restart postgres
+   # Option B: or just reload PgBouncer (if running)
+   # docker exec postgres bash -lc "psql -h 127.0.0.1 -p ${PGBOUNCER_PORT:-6432} -U ${POSTGRES_USER} -d pgbouncer -c 'RELOAD;'"
+   #+end_src
+
+Notes:
+- The =admin_users= for PgBouncer is =postgres= by default, so =POSTGRES_USER= can access the PgBouncer admin console (=pgbouncer= database) and issue commands like =SHOW POOLS;= and =RELOAD;=.
+- The =auth_file= is managed at container path =/etc/pgbouncer/userlist.txt= and initially contains only the =POSTGRES_USER=.
+- If you rotate passwords, remember to update =userlist.txt= accordingly.
+
+
 ** Accessing the Database
 
 *** Accessing from Host (CLI)
