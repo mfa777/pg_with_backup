@@ -7,6 +7,12 @@ This document summarizes all supported environment variables. It is generated/cu
 | BACKUP_MODE | core | sql | yes | all | Select backup strategy: `sql` full dumps or `wal` incremental wal-g |
 | POSTGRES_USER | postgres | postgres | yes | all | PostgreSQL superuser name used for backups |
 | POSTGRES_PASSWORD | postgres | (none) | yes | all | PostgreSQL superuser password (must set) |
+| ENABLE_PGBOUNCER | pgbouncer | 0 | no | all | Enable PgBouncer connection pooler (0=disabled, 1=enabled) |
+| PGBOUNCER_PORT | pgbouncer | 6432 | no | all | PgBouncer listen port inside container |
+| PGBOUNCER_HOST_PORT | pgbouncer | 6432 | no | all | Host port to expose PgBouncer |
+| PGBOUNCER_POOL_MODE | pgbouncer | session | no | all | Pool mode: session, transaction, or statement |
+| PGBOUNCER_MAX_CLIENT_CONN | pgbouncer | 100 | no | all | Maximum number of client connections |
+| PGBOUNCER_DEFAULT_POOL_SIZE | pgbouncer | 20 | no | all | Default pool size per user/database pair |
 | POSTGRES_DOCKERFILE | build | (unset) | no | wal (optional) | Custom Dockerfile for postgres (use `Dockerfile.postgres-walg` for WAL mode) |
 | POSTGRES_IMAGE | build | pgvector/pgvector:pg17 | no | all | Base image when not building a custom Dockerfile |
 | BACKUP_DOCKERFILE | build | Dockerfile.backup | no | all | Override backup service Dockerfile |
