@@ -1,4 +1,4 @@
-FROM postgres:17
+FROM postgres:17.6
 
 # Set argument for wal-g version
 ARG WALG_VERSION=v3.0.7
