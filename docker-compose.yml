@@ -45,6 +45,12 @@ services:
       - postgres
     networks:
       - pg_network
+    healthcheck:
+      test: ["CMD-SHELL", "wal-g --version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # Local SSH server for wal-g testing (only used when ENABLE_SSH_SERVER=1)
   ssh-server:
