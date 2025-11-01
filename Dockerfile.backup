@@ -64,10 +64,17 @@ RUN mkdir -p /config/rclone /tmp/backups /var/lib/backup/state /var/log \
 COPY backup.sh /usr/local/bin/backup.sh
 COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
 COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
+COPY scripts/wal-g-wrapper.sh /opt/walg/scripts/wal-g-wrapper.sh
 COPY entrypoint-backup.sh /entrypoint.sh
 
 # Make scripts executable
 RUN chmod +x /usr/local/bin/backup.sh /opt/walg/scripts/*.sh /entrypoint.sh
+
+# Install wal-g wrapper to ensure environment is always loaded
+# Rename the original wal-g binary and install wrapper as wal-g
+RUN mv /usr/local/bin/wal-g /usr/local/bin/wal-g.bin && \
+    cp /opt/walg/scripts/wal-g-wrapper.sh /usr/local/bin/wal-g && \
+    chmod +x /usr/local/bin/wal-g
 
 # --- Runtime ---
 ENTRYPOINT ["/entrypoint.sh"]
