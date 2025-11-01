@@ -7,29 +7,7 @@ services:
         POSTGRES_VERSION: ${POSTGRES_VERSION:-17.6}
     container_name: postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_VERSION: ${POSTGRES_VERSION:-17.6}
-      BACKUP_MODE: ${BACKUP_MODE:-sql}
-      # PgBouncer settings (optional connection pooling)
-      ENABLE_PGBOUNCER: ${ENABLE_PGBOUNCER:-0}
-      PGBOUNCER_PORT: ${PGBOUNCER_PORT:-6432}
-      PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-session}
-      PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-100}
-      PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
-      # wal-g environment variables (only used when BACKUP_MODE=wal)
-      WALG_SSH_PREFIX: ${WALG_SSH_PREFIX:-}
-      WALG_SSH_PRIVATE_KEY: ${WALG_SSH_PRIVATE_KEY:-}
-      WALG_SSH_PRIVATE_KEY_PATH: ${WALG_SSH_PRIVATE_KEY_PATH:-}
-      WALG_COMPRESSION_METHOD: ${WALG_COMPRESSION_METHOD:-lz4}
-      WALG_DELTA_MAX_STEPS: ${WALG_DELTA_MAX_STEPS:-7}
-      WALG_DELTA_ORIGIN: ${WALG_DELTA_ORIGIN:-LATEST}
-      WALG_LOG_LEVEL: ${WALG_LOG_LEVEL:-DEVEL}
-      SKIP_SSH_KEYSCAN: ${SKIP_SSH_KEYSCAN:-0}
-      # Explicit SSH variables recognized by wal-g (v3) CLI
-      SSH_PORT: "${SSH_PORT:-}"
-      SSH_USERNAME: "${SSH_USERNAME:-}"
+    env_file: .env
     ports:
       # Expose PgBouncer port if enabled (default 6432)
       # Note: Port is exposed in docker-compose but PgBouncer only runs when ENABLE_PGBOUNCER=1
