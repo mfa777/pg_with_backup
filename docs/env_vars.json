@@ -149,13 +149,7 @@
       "required": false,
       "description": "Number of full backups to retain (wal-g delete retain FULL)." 
     },
-    {
-      "name": "WALG_RETENTION_DAYS",
-      "category": "wal_mode",
-      "default": 30,
-      "required": false,
-      "description": "Planned/optional days-based retention (not enforced directly in current scripts)." 
-    },
+    
     {
       "name": "WALG_BASEBACKUP_CRON",
       "category": "wal_mode",

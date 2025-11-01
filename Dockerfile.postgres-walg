@@ -65,9 +65,16 @@ COPY scripts/wal-g-runner.sh /opt/walg/scripts/wal-g-runner.sh
 COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
 COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
 COPY scripts/setup-pgbouncer.sh /opt/scripts/setup-pgbouncer.sh
+COPY scripts/wal-g-wrapper.sh /opt/walg/scripts/wal-g-wrapper.sh
 
 # Make scripts executable
 RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh /opt/scripts/setup-pgbouncer.sh
+
+# Install wal-g wrapper to ensure environment is always loaded
+# Rename the original wal-g binary and install wrapper as wal-g
+RUN mv /usr/local/bin/wal-g /usr/local/bin/wal-g.bin && \
+    cp /opt/walg/scripts/wal-g-wrapper.sh /usr/local/bin/wal-g && \
+    chmod +x /usr/local/bin/wal-g
 
 # Build and install pgvector extension (optional - skip if build fails)
 RUN set -eux; \
