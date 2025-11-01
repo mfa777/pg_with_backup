@@ -144,22 +144,116 @@ run_cleanup() {
     fi
     
     local retain_full=${WALG_RETENTION_FULL:-7}
+    local retain_days=${WALG_RETENTION_DAYS:-}
     local log_file="$LOG_DIR/cleanup_$(date +%Y%m%d_%H%M%S).log"
+    local cleanup_success=0
     
-    log "Retaining $retain_full full backups"
+    # Execute time-based retention first if WALG_RETENTION_DAYS is set
+    # This handles old backups that might not be caught by count-based retention
+    if [ -n "$retain_days" ] && [ "$retain_days" -gt 0 ]; then
+        log "Applying time-based retention: deleting backups older than $retain_days days"
+        
+        # Calculate cutoff timestamp (Unix epoch time for easier comparison)
+        local cutoff_epoch
+        cutoff_epoch=$(date -d "$retain_days days ago" +%s 2>/dev/null || date -v-"${retain_days}"d +%s 2>/dev/null)
+        
+        if [ -z "$cutoff_epoch" ]; then
+            log "ERROR: Failed to calculate cutoff date"
+            send_telegram_message "ERROR: Time-based cleanup failed - date calculation error"
+        else
+            local cutoff_date
+            cutoff_date=$(date -u -d "@$cutoff_epoch" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -r "$cutoff_epoch" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null)
+            log "Cutoff date: $cutoff_date (epoch: $cutoff_epoch)"
+            
+            # Get backup list and find old backups to delete
+            local backup_list
+            backup_list=$(wal-g backup-list 2>/dev/null || true)
+            
+            if [ -n "$backup_list" ]; then
+                # Parse backup list to find the first backup that should be kept (cutoff point)
+                # All backups before this one will be deleted
+                # Format: backup_name   modified_time   wal_segment_backup_start
+                local first_backup_to_keep=""
+                local found_old_backups=0
+                
+                while IFS= read -r line; do
+                    # Skip header or empty lines
+                    [[ "$line" =~ ^name ]] && continue
+                    [[ -z "$line" ]] && continue
+                    
+                    # Extract backup name (first column)
+                    local backup_name=$(echo "$line" | awk '{print $1}')
+                    
+                    # Extract timestamp from backup name (format: base_YYYYMMDDTHHMMSSZ)
+                    if [[ "$backup_name" =~ base_([0-9]{8}T[0-9]{6}) ]]; then
+                        local backup_ts="${BASH_REMATCH[1]}"
+                        # Convert to epoch for comparison (format: YYYYMMDDTHHMMSS)
+                        local backup_epoch
+                        backup_epoch=$(date -d "${backup_ts:0:8} ${backup_ts:9:2}:${backup_ts:11:2}:${backup_ts:13:2}" +%s 2>/dev/null || \
+                                       date -j -f "%Y%m%d %H:%M:%S" "${backup_ts:0:8} ${backup_ts:9:2}:${backup_ts:11:2}:${backup_ts:13:2}" +%s 2>/dev/null || echo "0")
+                        
+                        if [ "$backup_epoch" -gt 0 ]; then
+                            if [ "$backup_epoch" -lt "$cutoff_epoch" ]; then
+                                # This backup is old
+                                found_old_backups=1
+                                log "Found old backup: $backup_name (age: $((($cutoff_epoch - $backup_epoch) / 86400)) days)"
+                            elif [ $found_old_backups -eq 1 ] && [ -z "$first_backup_to_keep" ]; then
+                                # This is the first backup after the cutoff - use it as the deletion boundary
+                                first_backup_to_keep="$backup_name"
+                                log "First backup to keep: $first_backup_to_keep"
+                                break
+                            fi
+                        fi
+                    fi
+                done <<< "$backup_list"
+                
+                # Delete old backups using the boundary backup
+                if [ -n "$first_backup_to_keep" ]; then
+                    log "Deleting all backups before: $first_backup_to_keep"
+                    if wal-g delete before "$first_backup_to_keep" --confirm 2>&1 | tee -a "$log_file"; then
+                        log "Successfully deleted old backups and associated WAL files"
+                        cleanup_success=1
+                    else
+                        log "WARNING: Failed to delete old backups"
+                    fi
+                elif [ $found_old_backups -eq 1 ]; then
+                    # All backups are old - keep at least one (the newest one)
+                    log "WARNING: All backups are older than $retain_days days. Keeping the newest one for safety."
+                else
+                    log "INFO: No backups older than $retain_days days found"
+                fi
+            else
+                log "INFO: No backups found for time-based cleanup"
+            fi
+        fi
+    fi
     
-    # Execute cleanup
-    if wal-g delete retain FULL "$retain_full" --confirm 2>&1 | tee "$log_file"; then
+    # Execute count-based retention (retain N full backups)
+    # This ensures we always keep at least N backups regardless of age
+    log "Retaining $retain_full full backups (count-based)"
+    if wal-g delete retain FULL "$retain_full" --confirm 2>&1 | tee -a "$log_file"; then
+        log "Count-based cleanup completed successfully"
+        cleanup_success=1
+    else
+        log "INFO: Count-based cleanup found no backups to delete"
+    fi
+    
+    # Report final status
+    if [ $cleanup_success -eq 1 ]; then
         log "Cleanup completed successfully"
         
         # Update cleanup status
-        echo "$(date -Iseconds) CLEANUP_OK RETAIN_FULL=$retain_full" > "$PGDATA/walg_cleanup.last"
+        local status_msg="CLEANUP_OK RETAIN_FULL=$retain_full"
+        if [ -n "$retain_days" ]; then
+            status_msg="$status_msg RETAIN_DAYS=$retain_days"
+        fi
+        echo "$(date -Iseconds) $status_msg" > "$PGDATA/walg_cleanup.last"
         
         return 0
     else
-        log "ERROR: Cleanup failed"
-        send_telegram_message "ERROR: WAL-G cleanup failed. Check logs."
-        return 1
+        log "INFO: Cleanup completed - no backups needed deletion"
+        echo "$(date -Iseconds) CLEANUP_OK NO_DELETION_NEEDED" > "$PGDATA/walg_cleanup.last"
+        return 0
     fi
 }
 

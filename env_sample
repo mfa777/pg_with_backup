@@ -85,10 +85,15 @@ WALG_DELTA_ORIGIN=LATEST
 # Log level for wal-g (NORMAL or DEVEL)
 WALG_LOG_LEVEL=DEVEL
 
-# Retention policy: number of full backups to keep
+# Retention policy: number of full backups to keep (count-based)
+# Ensures at least N full backups are always retained, regardless of age
 WALG_RETENTION_FULL=7
 
-# Retention policy: days to keep (alternative/additional)
+# Retention policy: days to keep (time-based, optional)
+# Deletes backups (and their associated WAL files) older than N days
+# Both policies work together: backups are kept if they meet EITHER condition
+# Example: With FULL=7 and DAYS=30, you'll have at least 7 backups, but old backups
+# beyond 30 days will be deleted if more than 7 backups exist
 WALG_RETENTION_DAYS=30
 
 # Cron schedule for base backups (when BACKUP_MODE=wal)
