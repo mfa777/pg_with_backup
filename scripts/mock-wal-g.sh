@@ -110,9 +110,60 @@ delete_old_backups() {
             echo "Deleted $to_delete old backups"
         else
             log "No backups to delete (current: $backup_count, retention: $retention)"
+            echo "INFO: No backup found for deletion"
         fi
     else
         log "No backup list found"
+        echo "INFO: No backup found for deletion"
+    fi
+}
+
+# Simulate delete before a specific backup
+delete_before_backup() {
+    local target_backup="$1"
+    log "Executing delete before: $target_backup"
+    
+    if [[ -f "$MOCK_BACKUP_DIR/backups.txt" ]]; then
+        local found=0
+        local count=0
+        
+        # Find the line number of the target backup
+        while IFS= read -r line; do
+            count=$((count + 1))
+            local backup_name=$(echo "$line" | awk '{print $1}')
+            if [[ "$backup_name" == "$target_backup" ]]; then
+                found=$count
+                break
+            fi
+        done < "$MOCK_BACKUP_DIR/backups.txt"
+        
+        if [[ $found -gt 1 ]]; then
+            local to_delete=$((found - 1))
+            log "Deleting $to_delete backups before $target_backup"
+            
+            # Remove backups before target
+            head -n "$to_delete" "$MOCK_BACKUP_DIR/backups.txt" | while read backup_line; do
+                local backup_name=$(echo "$backup_line" | awk '{print $1}')
+                log "Deleting backup: $backup_name"
+                rm -f "$MOCK_BACKUP_DIR/${backup_name}.tar.lz4"
+            done
+            
+            # Update backup list
+            tail -n "+$((to_delete + 1))" "$MOCK_BACKUP_DIR/backups.txt" > "$MOCK_BACKUP_DIR/backups.txt.tmp"
+            mv "$MOCK_BACKUP_DIR/backups.txt.tmp" "$MOCK_BACKUP_DIR/backups.txt"
+            
+            echo "Deleted $to_delete backups before $target_backup"
+        elif [[ $found -eq 1 ]]; then
+            log "Target backup is the oldest - nothing to delete"
+            echo "INFO: No backup found for deletion"
+        else
+            log "ERROR: Backup $target_backup not found"
+            echo "ERROR: Backup not found"
+            return 1
+        fi
+    else
+        log "No backup list found"
+        echo "INFO: No backup found for deletion"
     fi
 }
 
@@ -133,7 +184,22 @@ case "${1:-help}" in
         ;;
     "delete")
         case "${2:-}" in
-            "retain"|"FULL")
+            "retain")
+                shift 2
+                # Handle "retain FULL N --confirm"
+                delete_old_backups
+                ;;
+            "before")
+                shift 2
+                # Handle "before BACKUP_NAME --confirm"
+                backup_name="$1"
+                if [[ -z "$backup_name" || "$backup_name" == "--confirm" ]]; then
+                    echo "Error: delete before requires backup name" >&2
+                    exit 1
+                fi
+                delete_before_backup "$backup_name"
+                ;;
+            "FULL")
                 delete_old_backups
                 ;;
             *)
