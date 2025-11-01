@@ -83,6 +83,28 @@ wal_push() {
     fi
 }
 
+# Helper function to update backup list with error checking
+# Usage: update_backup_list N (keeps lines from N+1 onwards)
+update_backup_list() {
+    local skip_lines=$1
+    local list_file="$MOCK_BACKUP_DIR/backups.txt"
+    local tmp_file="$MOCK_BACKUP_DIR/backups.txt.tmp"
+    
+    if tail -n "+$((skip_lines + 1))" "$list_file" > "$tmp_file"; then
+        if [ -s "$tmp_file" ]; then
+            mv "$tmp_file" "$list_file"
+            return 0
+        else
+            log "ERROR: Temporary backup list is empty, keeping original"
+            rm -f "$tmp_file"
+            return 1
+        fi
+    else
+        log "ERROR: Failed to create temporary backup list"
+        return 1
+    fi
+}
+
 # Simulate delete with retention
 delete_old_backups() {
     log "Executing delete with retention"
@@ -103,18 +125,10 @@ delete_old_backups() {
                 rm -f "$MOCK_BACKUP_DIR/${backup_name}.tar.lz4"
             done
             
-            # Update backup list with error checking
-            if tail -n "+$((to_delete + 1))" "$MOCK_BACKUP_DIR/backups.txt" > "$MOCK_BACKUP_DIR/backups.txt.tmp"; then
-                if [ -s "$MOCK_BACKUP_DIR/backups.txt.tmp" ]; then
-                    mv "$MOCK_BACKUP_DIR/backups.txt.tmp" "$MOCK_BACKUP_DIR/backups.txt"
-                    echo "Deleted $to_delete old backups"
-                else
-                    log "ERROR: Temporary backup list is empty, keeping original"
-                    rm -f "$MOCK_BACKUP_DIR/backups.txt.tmp"
-                    return 1
-                fi
+            # Update backup list
+            if update_backup_list "$to_delete"; then
+                echo "Deleted $to_delete old backups"
             else
-                log "ERROR: Failed to create temporary backup list"
                 return 1
             fi
         else
@@ -157,18 +171,10 @@ delete_before_backup() {
                 rm -f "$MOCK_BACKUP_DIR/${backup_name}.tar.lz4"
             done
             
-            # Update backup list with error checking
-            if tail -n "+$((to_delete + 1))" "$MOCK_BACKUP_DIR/backups.txt" > "$MOCK_BACKUP_DIR/backups.txt.tmp"; then
-                if [ -s "$MOCK_BACKUP_DIR/backups.txt.tmp" ]; then
-                    mv "$MOCK_BACKUP_DIR/backups.txt.tmp" "$MOCK_BACKUP_DIR/backups.txt"
-                    echo "Deleted $to_delete backups before $target_backup"
-                else
-                    log "ERROR: Temporary backup list is empty, keeping original"
-                    rm -f "$MOCK_BACKUP_DIR/backups.txt.tmp"
-                    return 1
-                fi
+            # Update backup list
+            if update_backup_list "$to_delete"; then
+                echo "Deleted $to_delete backups before $target_backup"
             else
-                log "ERROR: Failed to create temporary backup list"
                 return 1
             fi
         elif [[ $found -eq 1 ]]; then

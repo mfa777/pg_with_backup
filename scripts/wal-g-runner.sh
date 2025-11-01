@@ -4,6 +4,9 @@ set -eo pipefail
 # wal-g runner script for base backups and cleanup
 # Usage: wal-g-runner.sh [backup|clean|combo]
 
+# Constants
+SECONDS_PER_DAY=86400
+
 # Source wal-g environment
 if [ -f "/var/lib/postgresql/.walg_env" ]; then
     source "/var/lib/postgresql/.walg_env"
@@ -68,7 +71,7 @@ backup_timestamp_to_epoch() {
     local epoch=""
     
     # Validate input format
-    if [[ ! "$ts" =~ ^[0-9]{8}T[0-9]{6}$ ]]; then
+    if [[ ! "$ts" =~ ^[[:digit:]]{8}T[[:digit:]]{6}$ ]]; then
         echo "0"
         return 1
     fi
@@ -254,7 +257,7 @@ run_cleanup() {
                     local backup_name=$(echo "$line" | awk '{print $1}')
                     
                     # Extract timestamp from backup name (format: base_YYYYMMDDTHHMMSSZ)
-                    if [[ "$backup_name" =~ base_([0-9]{8}T[0-9]{6}) ]]; then
+                    if [[ "$backup_name" =~ base_([[:digit:]]{8}T[[:digit:]]{6}) ]]; then
                         local backup_ts="${BASH_REMATCH[1]}"
                         
                         # Convert to epoch for comparison
@@ -265,7 +268,7 @@ run_cleanup() {
                             if [ "$backup_epoch" -lt "$cutoff_epoch" ]; then
                                 # This backup is old
                                 found_old_backups=1
-                                local age_days=$((($cutoff_epoch - $backup_epoch) / 86400))
+                                local age_days=$((($cutoff_epoch - $backup_epoch) / SECONDS_PER_DAY))
                                 log "Found old backup: $backup_name (age: $age_days days)"
                             elif [ $found_old_backups -eq 1 ] && [ -z "$first_backup_to_keep" ]; then
                                 # This is the first backup after the cutoff - use it as the deletion boundary
