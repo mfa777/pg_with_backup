@@ -212,6 +212,44 @@ sudo docker exec backup /opt/walg/scripts/wal-g-runner.sh clean
 sudo docker exec postgres wal-g --version
 #+end_src
 
+*Note:* WAL-G commands can be run directly via =docker exec postgres wal-g <command>= without needing to switch users. The system includes a wrapper script that automatically loads the required environment variables (including SSH_PRIVATE_KEY_PATH) before executing WAL-G commands.
+
+*** Common Issues (WAL Mode)
+
+**** SSH Authentication Error
+If you see an error like:
+#+begin_example
+ERROR: ssh: handshake failed: ssh: unable to authenticate, attempted methods [none]
+#+end_example
+
+This was a known issue that has been fixed. The system now includes a wal-g wrapper script that automatically sources the environment file containing SSH credentials. Make sure you're using the latest version with the wrapper script installed.
+
+To verify the fix is working:
+#+begin_src bash
+# Check that wal-g wrapper is installed
+sudo docker exec postgres which wal-g
+# Output should be: /usr/local/bin/wal-g
+
+# Check that environment file exists
+sudo docker exec postgres test -f /var/lib/postgresql/.walg_env && echo "Environment file exists"
+
+# Test wal-g with environment loaded
+sudo docker exec postgres wal-g backup-list
+#+end_src
+
+**** Debugging SSH Connection
+If you continue to have SSH issues:
+#+begin_src bash
+# Check if SSH key exists
+sudo docker exec postgres ls -la /var/lib/postgresql/.ssh/
+
+# Test SSH connection manually
+sudo docker exec postgres su - postgres -c "ssh -v <user>@<host> -p <port>"
+
+# Check WAL-G environment variables
+sudo docker exec postgres cat /var/lib/postgresql/.walg_env
+#+end_src
+
 ** Restore Procedures
 
 *** SQL Mode Restore
