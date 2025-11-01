@@ -67,7 +67,6 @@
 
 | 变量名 | 默认值 | 状态 | 说明 |
 |--------|--------|------|------|
-| `WALG_RETENTION_DAYS` | `30` | ❌ 未使用 | 基于天数的保留策略，实际使用基于数量的策略 |
 
 #### 3. 测试环境配置
 
@@ -99,7 +98,6 @@
 # 不推荐在生产环境中使用的变量
 # WALG_BASEBACKUP_CRON="30 1 * * *"     # 使用自定义脚本替代
 # WALG_CLEAN_CRON="15 3 * * *"          # 集成到每日备份中
-# WALG_RETENTION_DAYS=30                # 使用基于数量的策略
 # ENABLE_SSH_SERVER=0                   # 仅测试用
 # SSH_USER=walg                         # 仅测试用
 # WALG_SSH_PREFIX_LOCAL=...             # (已弃用) 请删除

@@ -88,9 +88,6 @@ WALG_LOG_LEVEL=DEVEL
 # Retention policy: number of full backups to keep
 WALG_RETENTION_FULL=7
 
-# Retention policy: days to keep (alternative/additional)
-WALG_RETENTION_DAYS=30
-
 # Cron schedule for base backups (when BACKUP_MODE=wal)
 WALG_BASEBACKUP_CRON="30 1 * * *"
 

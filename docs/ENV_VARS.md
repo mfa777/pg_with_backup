@@ -32,7 +32,6 @@ This document summarizes all supported environment variables. It is generated/cu
 | WALG_DELTA_ORIGIN | wal_mode | LATEST | no | wal | Delta origin reference |
 | WALG_LOG_LEVEL | wal_mode | DEVEL | no | wal | wal-g log verbosity |
 | WALG_RETENTION_FULL | wal_mode | 7 | no | wal | Number of full backups to retain |
-| WALG_RETENTION_DAYS | wal_mode | 30 | no | wal (planned) | Optional days-based retention (not enforced yet) |
 | WALG_BASEBACKUP_CRON | wal_mode | 30 1 * * * | no | wal | Cron for base backups |
 | WALG_CLEAN_CRON | wal_mode | 15 3 * * * | no | wal | Cron for retention/cleanup |
 | ENABLE_SSH_SERVER | testing | 0 | no | wal/testing | When 1 auto-starts internal ssh-server (profile) and supplies default WALG_SSH_PREFIX/SSH_PORT=2222 |
@@ -50,7 +49,8 @@ This document summarizes all supported environment variables. It is generated/cu
 
 ## Notes
 - "when sql" / "when wal" means required only if that mode is active.
-- Some variables (e.g., `WALG_RETENTION_DAYS`) are placeholders for planned enforcement.
+ - "when sql" / "when wal" means required only if that mode is active.
+ 
 - `WALE_SSH_PREFIX` is emitted automatically; do not set manually unless for legacy tooling.
 
 ## Machine-Readable Format
