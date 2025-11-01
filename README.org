@@ -127,7 +127,7 @@ SQL_BACKUP_RETAIN_DAYS=30
    sudo docker compose logs backup
    
    # List available backups
-   sudo docker exec postgres wal-g backup-list
+   sudo docker compose exec postgres wal-g backup-list
    #+end_src
 
 *Note:* The =POSTGRES_VERSION= automatically creates a version-specific subdirectory in your backup storage. For example, if =WALG_SSH_PREFIX=ssh://user@host/backups=, WAL files will be stored at =ssh://user@host/backups/18.0/=.
@@ -193,23 +193,23 @@ networks:
 sudo docker compose logs backup -f
 
 # WAL mode: Check last base backup
-sudo docker exec postgres cat /var/lib/postgresql/data/walg_basebackup.last
+sudo docker compose exec postgres cat /var/lib/postgresql/data/walg_basebackup.last
 
 # WAL mode: List available backups
-sudo docker exec postgres wal-g backup-list
+sudo docker compose exec postgres wal-g backup-list
 #+end_src
 
 *** Manual Operations (WAL Mode)
 
 #+begin_src bash
 # Trigger base backup manually
-sudo docker exec backup /opt/walg/scripts/wal-g-runner.sh backup
+sudo docker compose exec backup /opt/walg/scripts/wal-g-runner.sh backup
 
 # Cleanup old backups
-sudo docker exec backup /opt/walg/scripts/wal-g-runner.sh clean
+sudo docker compose exec backup /opt/walg/scripts/wal-g-runner.sh clean
 
 # Check wal-g version
-sudo docker exec postgres wal-g --version
+sudo docker compose exec postgres wal-g --version
 #+end_src
 
 ** Restore Procedures
