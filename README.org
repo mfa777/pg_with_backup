@@ -7,7 +7,7 @@ Production-ready PostgreSQL setup with automated, encrypted backups to remote st
 
 ** Features
 
-- PostgreSQL Database (customizable version, default 18.0)
+- PostgreSQL Database (customizable version, default 17.6)
 - Two backup modes: SQL (full dumps) or WAL-G (incremental with PITR)
 - Automated backup scheduling and retention policies
 - Optional PgBouncer connection pooling
@@ -57,7 +57,7 @@ Production-ready PostgreSQL setup with automated, encrypted backups to remote st
 Configure these variables in =.env=:
 #+begin_src bash
 BACKUP_MODE=sql
-POSTGRES_VERSION=18.0  # Or your desired PostgreSQL version
+POSTGRES_VERSION=17.6  # Or your desired PostgreSQL version
 
 # Rclone configuration (base64 encoded)
 # Run: cat ~/.config/rclone/rclone.conf | base64 -w0
@@ -81,7 +81,7 @@ SQL_BACKUP_RETAIN_DAYS=30
 1. *Configure .env file:*
    #+begin_src bash
    BACKUP_MODE=wal
-   POSTGRES_VERSION=18.0  # Or your desired version
+   POSTGRES_VERSION=17.6  # Or your desired version
 
    # SSH storage configuration
    WALG_SSH_PREFIX=ssh://walg@backup-host/var/backups/pg/prod
@@ -130,7 +130,7 @@ SQL_BACKUP_RETAIN_DAYS=30
    sudo docker compose exec postgres wal-g backup-list
    #+end_src
 
-*Note:* The =POSTGRES_VERSION= automatically creates a version-specific subdirectory in your backup storage. For example, if =WALG_SSH_PREFIX=ssh://user@host/backups=, WAL files will be stored at =ssh://user@host/backups/18.0/=.
+*Note:* The =POSTGRES_VERSION= automatically creates a version-specific subdirectory in your backup storage. For example, if =WALG_SSH_PREFIX=ssh://user@host/backups=, WAL files will be stored at =ssh://user@host/backups/17.6/=.
 
 ** PgBouncer Connection Pooling (Optional)
 

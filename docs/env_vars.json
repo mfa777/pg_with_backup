@@ -18,7 +18,7 @@
       "name": "POSTGRES_VERSION",
       "category": "core",
       "modes": ["sql", "wal"],
-      "default": "18.0",
+      "default": "17.6",
       "required": false,
       "since": "2025-10-31",
       "description": "PostgreSQL Docker image version (e.g., 17.4, 16.3, 15.5). Used for base image and as subdirectory in WAL backup storage for version-specific organization."

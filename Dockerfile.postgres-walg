@@ -1,6 +1,6 @@
 # PostgreSQL version - configured via POSTGRES_VERSION in .env file
 # Default value here is only used if building directly with 'docker build' (without docker-compose)
-ARG POSTGRES_VERSION=18.0
+ARG POSTGRES_VERSION=17.6
 FROM postgres:${POSTGRES_VERSION}
 
 # Set argument for wal-g version

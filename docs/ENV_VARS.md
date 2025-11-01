@@ -5,7 +5,7 @@ This document summarizes all supported environment variables. It is generated/cu
 | Name | Category | Default | Required | Mode Scope | Description |
 |------|----------|---------|----------|------------|-------------|
 | BACKUP_MODE | core | sql | yes | all | Select backup strategy: `sql` full dumps or `wal` incremental wal-g |
-| POSTGRES_VERSION | core | 18.0 | no | all | PostgreSQL Docker image version (e.g., 17.4, 16.3). Used for base image and as subdirectory in WAL backup storage |
+| POSTGRES_VERSION | core | 17.6 | no | all | PostgreSQL Docker image version (e.g., 17.4, 16.3). Used for base image and as subdirectory in WAL backup storage |
 | POSTGRES_USER | postgres | postgres | yes | all | PostgreSQL superuser name used for backups |
 | POSTGRES_PASSWORD | postgres | (none) | yes | all | PostgreSQL superuser password (must set) |
 | ENABLE_PGBOUNCER | pgbouncer | 0 | no | all | Enable PgBouncer connection pooler (0=disabled, 1=enabled) |
