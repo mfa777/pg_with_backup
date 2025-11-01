@@ -4,13 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile.postgres-walg
       args:
-        POSTGRES_VERSION: ${POSTGRES_VERSION:-18.0}
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-17.6}
     container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_VERSION: ${POSTGRES_VERSION:-18.0}
+      POSTGRES_VERSION: ${POSTGRES_VERSION:-17.6}
       BACKUP_MODE: ${BACKUP_MODE:-sql}
       # PgBouncer settings (optional connection pooling)
       ENABLE_PGBOUNCER: ${ENABLE_PGBOUNCER:-0}
@@ -47,7 +47,7 @@ services:
       context: .
       dockerfile: Dockerfile.backup
       args:
-        POSTGRES_VERSION: ${POSTGRES_VERSION:-18.0}
+        POSTGRES_VERSION: ${POSTGRES_VERSION:-17.6}
     restart: unless-stopped
     env_file: .env
     volumes:
