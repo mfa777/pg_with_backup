@@ -103,11 +103,20 @@ delete_old_backups() {
                 rm -f "$MOCK_BACKUP_DIR/${backup_name}.tar.lz4"
             done
             
-            # Update backup list
-            tail -n "+$((to_delete + 1))" "$MOCK_BACKUP_DIR/backups.txt" > "$MOCK_BACKUP_DIR/backups.txt.tmp"
-            mv "$MOCK_BACKUP_DIR/backups.txt.tmp" "$MOCK_BACKUP_DIR/backups.txt"
-            
-            echo "Deleted $to_delete old backups"
+            # Update backup list with error checking
+            if tail -n "+$((to_delete + 1))" "$MOCK_BACKUP_DIR/backups.txt" > "$MOCK_BACKUP_DIR/backups.txt.tmp"; then
+                if [ -s "$MOCK_BACKUP_DIR/backups.txt.tmp" ]; then
+                    mv "$MOCK_BACKUP_DIR/backups.txt.tmp" "$MOCK_BACKUP_DIR/backups.txt"
+                    echo "Deleted $to_delete old backups"
+                else
+                    log "ERROR: Temporary backup list is empty, keeping original"
+                    rm -f "$MOCK_BACKUP_DIR/backups.txt.tmp"
+                    return 1
+                fi
+            else
+                log "ERROR: Failed to create temporary backup list"
+                return 1
+            fi
         else
             log "No backups to delete (current: $backup_count, retention: $retention)"
             echo "INFO: No backup found for deletion"
@@ -148,11 +157,20 @@ delete_before_backup() {
                 rm -f "$MOCK_BACKUP_DIR/${backup_name}.tar.lz4"
             done
             
-            # Update backup list
-            tail -n "+$((to_delete + 1))" "$MOCK_BACKUP_DIR/backups.txt" > "$MOCK_BACKUP_DIR/backups.txt.tmp"
-            mv "$MOCK_BACKUP_DIR/backups.txt.tmp" "$MOCK_BACKUP_DIR/backups.txt"
-            
-            echo "Deleted $to_delete backups before $target_backup"
+            # Update backup list with error checking
+            if tail -n "+$((to_delete + 1))" "$MOCK_BACKUP_DIR/backups.txt" > "$MOCK_BACKUP_DIR/backups.txt.tmp"; then
+                if [ -s "$MOCK_BACKUP_DIR/backups.txt.tmp" ]; then
+                    mv "$MOCK_BACKUP_DIR/backups.txt.tmp" "$MOCK_BACKUP_DIR/backups.txt"
+                    echo "Deleted $to_delete backups before $target_backup"
+                else
+                    log "ERROR: Temporary backup list is empty, keeping original"
+                    rm -f "$MOCK_BACKUP_DIR/backups.txt.tmp"
+                    return 1
+                fi
+            else
+                log "ERROR: Failed to create temporary backup list"
+                return 1
+            fi
         elif [[ $found -eq 1 ]]; then
             log "Target backup is the oldest - nothing to delete"
             echo "INFO: No backup found for deletion"

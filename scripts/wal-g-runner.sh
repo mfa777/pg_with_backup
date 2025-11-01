@@ -25,6 +25,69 @@ log() {
     echo "[$(date -Iseconds)] $*"
 }
 
+# Cross-platform date calculation helper
+# Usage: calculate_epoch_days_ago DAYS
+calculate_epoch_days_ago() {
+    local days=$1
+    local epoch=""
+    
+    # Try GNU date first (Linux)
+    epoch=$(date -d "$days days ago" +%s 2>/dev/null)
+    
+    # If that fails, try BSD date (macOS)
+    if [ -z "$epoch" ] || [ "$epoch" = "" ]; then
+        epoch=$(date -v-"${days}"d +%s 2>/dev/null)
+    fi
+    
+    # Return the epoch or empty string if both failed
+    echo "$epoch"
+}
+
+# Convert epoch to ISO 8601 date
+# Usage: epoch_to_iso8601 EPOCH
+epoch_to_iso8601() {
+    local epoch=$1
+    local iso_date=""
+    
+    # Try GNU date first (Linux)
+    iso_date=$(date -u -d "@$epoch" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null)
+    
+    # If that fails, try BSD date (macOS)
+    if [ -z "$iso_date" ] || [ "$iso_date" = "" ]; then
+        iso_date=$(date -u -r "$epoch" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null)
+    fi
+    
+    echo "$iso_date"
+}
+
+# Parse backup timestamp and convert to epoch
+# Usage: backup_timestamp_to_epoch TIMESTAMP
+# TIMESTAMP format: YYYYMMDDTHHMMSS (e.g., 20240920T073000)
+backup_timestamp_to_epoch() {
+    local ts=$1
+    local epoch=""
+    
+    # Validate input format
+    if [[ ! "$ts" =~ ^[0-9]{8}T[0-9]{6}$ ]]; then
+        echo "0"
+        return 1
+    fi
+    
+    local date_part="${ts:0:8}"
+    local time_part="${ts:9:2}:${ts:11:2}:${ts:13:2}"
+    
+    # Try GNU date first (Linux)
+    epoch=$(date -d "$date_part $time_part" +%s 2>/dev/null)
+    
+    # If that fails, try BSD date (macOS)
+    if [ -z "$epoch" ] || [ "$epoch" = "" ]; then
+        epoch=$(date -j -f "%Y%m%d %H:%M:%S" "$date_part $time_part" +%s 2>/dev/null)
+    fi
+    
+    # Return epoch or 0 if conversion failed
+    echo "${epoch:-0}"
+}
+
 # Telegram notification function (reuse from backup.sh pattern)
 send_telegram_message() {
     local message="$1"
@@ -155,14 +218,20 @@ run_cleanup() {
         
         # Calculate cutoff timestamp (Unix epoch time for easier comparison)
         local cutoff_epoch
-        cutoff_epoch=$(date -d "$retain_days days ago" +%s 2>/dev/null || date -v-"${retain_days}"d +%s 2>/dev/null)
+        cutoff_epoch=$(calculate_epoch_days_ago "$retain_days")
         
-        if [ -z "$cutoff_epoch" ]; then
-            log "ERROR: Failed to calculate cutoff date"
+        if [ -z "$cutoff_epoch" ] || [ "$cutoff_epoch" = "0" ]; then
+            log "ERROR: Failed to calculate cutoff date (platform date command may be incompatible)"
             send_telegram_message "ERROR: Time-based cleanup failed - date calculation error"
         else
             local cutoff_date
-            cutoff_date=$(date -u -d "@$cutoff_epoch" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -r "$cutoff_epoch" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null)
+            cutoff_date=$(epoch_to_iso8601 "$cutoff_epoch")
+            
+            if [ -z "$cutoff_date" ]; then
+                log "WARNING: Could not format cutoff date for display"
+                cutoff_date="<unknown>"
+            fi
+            
             log "Cutoff date: $cutoff_date (epoch: $cutoff_epoch)"
             
             # Get backup list and find old backups to delete
@@ -187,22 +256,25 @@ run_cleanup() {
                     # Extract timestamp from backup name (format: base_YYYYMMDDTHHMMSSZ)
                     if [[ "$backup_name" =~ base_([0-9]{8}T[0-9]{6}) ]]; then
                         local backup_ts="${BASH_REMATCH[1]}"
-                        # Convert to epoch for comparison (format: YYYYMMDDTHHMMSS)
+                        
+                        # Convert to epoch for comparison
                         local backup_epoch
-                        backup_epoch=$(date -d "${backup_ts:0:8} ${backup_ts:9:2}:${backup_ts:11:2}:${backup_ts:13:2}" +%s 2>/dev/null || \
-                                       date -j -f "%Y%m%d %H:%M:%S" "${backup_ts:0:8} ${backup_ts:9:2}:${backup_ts:11:2}:${backup_ts:13:2}" +%s 2>/dev/null || echo "0")
+                        backup_epoch=$(backup_timestamp_to_epoch "$backup_ts")
                         
                         if [ "$backup_epoch" -gt 0 ]; then
                             if [ "$backup_epoch" -lt "$cutoff_epoch" ]; then
                                 # This backup is old
                                 found_old_backups=1
-                                log "Found old backup: $backup_name (age: $((($cutoff_epoch - $backup_epoch) / 86400)) days)"
+                                local age_days=$((($cutoff_epoch - $backup_epoch) / 86400))
+                                log "Found old backup: $backup_name (age: $age_days days)"
                             elif [ $found_old_backups -eq 1 ] && [ -z "$first_backup_to_keep" ]; then
                                 # This is the first backup after the cutoff - use it as the deletion boundary
                                 first_backup_to_keep="$backup_name"
                                 log "First backup to keep: $first_backup_to_keep"
                                 break
                             fi
+                        else
+                            log "WARNING: Could not parse timestamp from backup: $backup_name"
                         fi
                     fi
                 done <<< "$backup_list"
