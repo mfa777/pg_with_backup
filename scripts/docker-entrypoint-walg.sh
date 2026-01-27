@@ -81,18 +81,19 @@ if [ "$ENABLE_PGBOUNCER" = "1" ]; then
     ) &
 fi
 
-if [ -n "${PGDATA:-}" ] && [ "${ENABLE_VCHORD:-0}" = "1" ]; then
-    mkdir -p /docker-entrypoint-initdb.d
-    cat > /docker-entrypoint-initdb.d/98-enable-vchord.sh << 'EOF'
-#!/bin/bash
-set -euo pipefail
-echo "Post-init: Enabling VectorChord extension..."
-psql_args=(--username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" -v ON_ERROR_STOP=1)
-echo "Post-init: Enabling shared_preload_libraries for vchord..."
-psql "${psql_args[@]}" << 'SQL'
+if [ "${ENABLE_VCHORD:-0}" = "1" ]; then
+    (
+        echo "Waiting for PostgreSQL to be ready for VectorChord..."
+        for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER:-postgres}" &>/dev/null; then
+                psql_args=(--username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" -v ON_ERROR_STOP=1)
+                preload_libraries="$(psql "${psql_args[@]}" -tAc "SHOW shared_preload_libraries" | tr -d '[:space:]')"
+                if [ -z "${preload_libraries}" ] || ! echo ",${preload_libraries}," | grep -q ",vchord,"; then
+                    echo "Configuring shared_preload_libraries for vchord..."
+                    psql "${psql_args[@]}" << 'SQL'
 DO $$
 DECLARE
-    current_setting text := current_setting('shared_preload_libraries', true);
+    current_setting text := nullif(current_setting('shared_preload_libraries', true), '');
     new_setting text;
 BEGIN
     IF current_setting IS NULL OR btrim(current_setting) = '' THEN
@@ -108,14 +109,20 @@ BEGIN
     EXECUTE format('ALTER SYSTEM SET shared_preload_libraries = %L', new_setting);
 END $$;
 SQL
-if ! psql "${psql_args[@]}" << 'SQL'
-CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
-SQL
-then
-    echo "Warning: vchord extension creation failed; restart may be required after preload settings."
-fi
-EOF
-    chmod +x /docker-entrypoint-initdb.d/98-enable-vchord.sh
+                    echo "VectorChord preload configured; restart PostgreSQL to activate it."
+                    break
+                fi
+                if psql "${psql_args[@]}" -c "CREATE EXTENSION IF NOT EXISTS vchord CASCADE;" >/dev/null; then
+                    echo "VectorChord extension ready."
+                else
+                    echo "Warning: vchord extension creation failed."
+                fi
+                break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+        done
+    ) &
 fi
 
 # Find and call the original PostgreSQL entrypoint
