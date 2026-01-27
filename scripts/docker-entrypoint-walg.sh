@@ -97,7 +97,10 @@ DECLARE
 BEGIN
     IF current_setting IS NULL OR btrim(current_setting) = '' THEN
         new_setting := 'vchord';
-    ELSIF current_setting LIKE '%vchord%' THEN
+    ELSIF current_setting = 'vchord'
+        OR current_setting LIKE 'vchord,%'
+        OR current_setting LIKE '%,vchord'
+        OR current_setting LIKE '%,vchord,%' THEN
         new_setting := current_setting;
     ELSE
         new_setting := current_setting || ',vchord';
@@ -105,9 +108,12 @@ BEGIN
     EXECUTE format('ALTER SYSTEM SET shared_preload_libraries = %L', new_setting);
 END $$;
 SQL
-psql "${psql_args[@]}" << 'SQL'
+if ! psql "${psql_args[@]}" << 'SQL'
 CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
 SQL
+then
+    echo "Warning: vchord extension creation failed; restart may be required after preload settings."
+fi
 EOF
     chmod +x /docker-entrypoint-initdb.d/98-enable-vchord.sh
 fi

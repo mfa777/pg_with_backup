@@ -104,7 +104,7 @@ RUN set -eux; \
     arch="$(dpkg --print-architecture)"; \
     PG_MAJOR="$(echo ${POSTGRES_VERSION} | cut -d. -f1)"; \
     vchord_pkg="postgresql-${PG_MAJOR}-vchord_${VCHORD_VERSION}-${VCHORD_RELEASE}_${arch}.deb"; \
-    wget -O "/tmp/${vchord_pkg}" "https://github.com/tensorchord/VectorChord/releases/download/${VCHORD_VERSION}/${vchord_pkg}"; \
+    wget --tries=3 -O "/tmp/${vchord_pkg}" "https://github.com/tensorchord/VectorChord/releases/download/${VCHORD_VERSION}/${vchord_pkg}"; \
     apt-get update; \
     apt-get install -y --no-install-recommends "/tmp/${vchord_pkg}"; \
     rm -f "/tmp/${vchord_pkg}"; \
