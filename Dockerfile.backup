@@ -40,7 +40,7 @@ RUN set -eux; \
         *) echo "Unsupported architecture: ${arch}"; exit 1 ;; \
     esac; \
     walg_asset="wal-g-pg-${WALG_OS}-${walg_arch}.tar.gz"; \
-    wget --no-check-certificate -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/${walg_asset}"; \
+    wget -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/${walg_asset}"; \
     echo "Extracting wal-g..."; \
     cd /tmp && tar -tzf wal-g.tar.gz; \
     tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin; \

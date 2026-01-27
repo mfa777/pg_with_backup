@@ -81,7 +81,7 @@ if [ "$ENABLE_PGBOUNCER" = "1" ]; then
     ) &
 fi
 
-if [ -n "${PGDATA:-}" ]; then
+if [ -n "${PGDATA:-}" ] && [ "${ENABLE_VCHORD:-1}" = "1" ]; then
     mkdir -p /docker-entrypoint-initdb.d
     cat > /docker-entrypoint-initdb.d/98-enable-vchord.sh << 'EOF'
 #!/bin/bash
