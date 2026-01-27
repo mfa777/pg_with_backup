@@ -81,12 +81,29 @@ if [ "$ENABLE_PGBOUNCER" = "1" ]; then
     ) &
 fi
 
-if [ -n "${PGDATA:-}" ] && [ "${ENABLE_VCHORD:-1}" = "1" ]; then
+if [ -n "${PGDATA:-}" ] && [ "${ENABLE_VCHORD:-0}" = "1" ]; then
     mkdir -p /docker-entrypoint-initdb.d
     cat > /docker-entrypoint-initdb.d/98-enable-vchord.sh << 'EOF'
 #!/bin/bash
 set -euo pipefail
 echo "Post-init: Enabling VectorChord extension..."
+echo "Post-init: Enabling shared_preload_libraries for vchord..."
+psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" << 'SQL'
+DO $$
+DECLARE
+    current_setting text := current_setting('shared_preload_libraries', true);
+    new_setting text;
+BEGIN
+    IF current_setting IS NULL OR btrim(current_setting) = '' THEN
+        new_setting := 'vchord';
+    ELSIF current_setting LIKE '%vchord%' THEN
+        new_setting := current_setting;
+    ELSE
+        new_setting := current_setting || ',vchord';
+    END IF;
+    EXECUTE format('ALTER SYSTEM SET shared_preload_libraries = %L', new_setting);
+END $$;
+SQL
 psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" << 'SQL'
 CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
 SQL

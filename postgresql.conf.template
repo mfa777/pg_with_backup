@@ -20,8 +20,6 @@ wal_compression = on
 max_wal_size = 2GB
 min_wal_size = 512MB
 
-# VectorChord preload
-shared_preload_libraries = 'vchord'
 
 # Logging
 log_checkpoints = on
