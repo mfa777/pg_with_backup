@@ -38,6 +38,13 @@
       "description": "Superuser password. REQUIRED. Change in production." 
     },
     {
+      "name": "ENABLE_VCHORD",
+      "category": "wal_mode",
+      "default": 0,
+      "required": false,
+      "description": "Enable VectorChord preload/extension setup; requires restart after initial config."
+    },
+    {
       "name": "POSTGRES_DOCKERFILE",
       "category": "build",
       "default": null,

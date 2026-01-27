@@ -81,6 +81,50 @@ if [ "$ENABLE_PGBOUNCER" = "1" ]; then
     ) &
 fi
 
+if [ "${ENABLE_VCHORD:-0}" = "1" ]; then
+    (
+        echo "Waiting for PostgreSQL to be ready for VectorChord..."
+        for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER:-postgres}" &>/dev/null; then
+                psql_args=(--username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" -v ON_ERROR_STOP=1)
+                preload_libraries="$(psql "${psql_args[@]}" -tAc "SHOW shared_preload_libraries" | tr -d '[:space:]')"
+                if [ -z "${preload_libraries}" ] || ! echo ",${preload_libraries}," | grep -q ",vchord,"; then
+                    echo "Configuring shared_preload_libraries for vchord..."
+                    psql "${psql_args[@]}" << 'SQL'
+DO $$
+DECLARE
+    current_setting text := nullif(current_setting('shared_preload_libraries', true), '');
+    new_setting text;
+BEGIN
+    IF current_setting IS NULL OR btrim(current_setting) = '' THEN
+        new_setting := 'vchord';
+    ELSIF current_setting = 'vchord'
+        OR current_setting LIKE 'vchord,%'
+        OR current_setting LIKE '%,vchord'
+        OR current_setting LIKE '%,vchord,%' THEN
+        new_setting := current_setting;
+    ELSE
+        new_setting := current_setting || ',vchord';
+    END IF;
+    EXECUTE format('ALTER SYSTEM SET shared_preload_libraries = %L', new_setting);
+END $$;
+SQL
+                    echo "VectorChord preload configured; restart PostgreSQL to activate it."
+                    break
+                fi
+                if psql "${psql_args[@]}" -c "CREATE EXTENSION IF NOT EXISTS vchord CASCADE;" >/dev/null; then
+                    echo "VectorChord extension ready."
+                else
+                    echo "Warning: vchord extension creation failed."
+                fi
+                break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+        done
+    ) &
+fi
+
 # Find and call the original PostgreSQL entrypoint
 if [ -f "/usr/local/bin/docker-entrypoint.sh" ]; then
     exec /usr/local/bin/docker-entrypoint.sh "$@"
