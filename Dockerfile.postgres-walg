@@ -3,6 +3,10 @@
 ARG POSTGRES_VERSION=17.6
 FROM postgres:${POSTGRES_VERSION}
 
+# Re-declare the build ARG so it's available after the FROM instruction
+# (ARGs defined before FROM are not automatically exposed to later build steps)
+ARG POSTGRES_VERSION
+
 # Set argument for wal-g version
 ARG WALG_VERSION=v3.0.8
 ARG WALG_OS=20.04
