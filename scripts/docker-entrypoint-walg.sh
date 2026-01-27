@@ -87,8 +87,9 @@ if [ -n "${PGDATA:-}" ] && [ "${ENABLE_VCHORD:-0}" = "1" ]; then
 #!/bin/bash
 set -euo pipefail
 echo "Post-init: Enabling VectorChord extension..."
+psql_args=(--username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" -v ON_ERROR_STOP=1)
 echo "Post-init: Enabling shared_preload_libraries for vchord..."
-psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" << 'SQL'
+psql "${psql_args[@]}" << 'SQL'
 DO $$
 DECLARE
     current_setting text := current_setting('shared_preload_libraries', true);
@@ -104,7 +105,7 @@ BEGIN
     EXECUTE format('ALTER SYSTEM SET shared_preload_libraries = %L', new_setting);
 END $$;
 SQL
-psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" << 'SQL'
+psql "${psql_args[@]}" << 'SQL'
 CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
 SQL
 EOF
