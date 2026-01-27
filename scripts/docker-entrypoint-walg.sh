@@ -81,6 +81,19 @@ if [ "$ENABLE_PGBOUNCER" = "1" ]; then
     ) &
 fi
 
+if [ -n "${PGDATA:-}" ]; then
+    mkdir -p /docker-entrypoint-initdb.d
+    cat > /docker-entrypoint-initdb.d/98-enable-vchord.sh << 'EOF'
+#!/bin/bash
+set -euo pipefail
+echo "Post-init: Enabling VectorChord extension..."
+psql -v ON_ERROR_STOP=1 --username "${POSTGRES_USER:-postgres}" --dbname "${POSTGRES_DB:-postgres}" << 'SQL'
+CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
+SQL
+EOF
+    chmod +x /docker-entrypoint-initdb.d/98-enable-vchord.sh
+fi
+
 # Find and call the original PostgreSQL entrypoint
 if [ -f "/usr/local/bin/docker-entrypoint.sh" ]; then
     exec /usr/local/bin/docker-entrypoint.sh "$@"
