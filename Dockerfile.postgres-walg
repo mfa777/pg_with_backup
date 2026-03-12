@@ -114,6 +114,34 @@ RUN set -eux; \
     rm -f "/tmp/${vchord_pkg}"; \
     rm -rf /var/lib/apt/lists/*
 
+# Install ParadeDB pg_search extension
+ARG PG_SEARCH_VERSION=0.21.13
+ARG PG_SEARCH_RELEASE=1
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    PG_MAJOR="$(echo ${POSTGRES_VERSION} | cut -d. -f1)"; \
+    . /etc/os-release; \
+    pg_search_url=""; \
+    # Fallback distro tags for ParadeDB package naming:
+    # bookworm=Debian 12, trixie=Debian 13, noble=Ubuntu 24.04, jammy=Ubuntu 22.04
+    for distro in "${VERSION_CODENAME:-}" bookworm trixie noble jammy; do \
+        [ -n "${distro}" ] || continue; \
+        candidate="https://github.com/paradedb/paradedb/releases/download/v${PG_SEARCH_VERSION}/postgresql-${PG_MAJOR}-pg-search_${PG_SEARCH_VERSION}-${PG_SEARCH_RELEASE}PARADEDB-${distro}_${arch}.deb"; \
+        if wget -q --spider "${candidate}"; then \
+            pg_search_url="${candidate}"; \
+            break; \
+        fi; \
+    done; \
+    if [ -z "${pg_search_url}" ]; then \
+        echo "Could not find pg_search package for postgresql-${PG_MAJOR} (${arch}) in v${PG_SEARCH_VERSION}" >&2; \
+        exit 1; \
+    fi; \
+    wget --tries=3 -O /tmp/pg_search.deb "${pg_search_url}"; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends /tmp/pg_search.deb; \
+    rm -f /tmp/pg_search.deb; \
+    rm -rf /var/lib/apt/lists/*
+
 # Use our custom entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint-walg.sh"]
 CMD ["postgres"]
