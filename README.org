@@ -158,7 +158,7 @@ psql -h localhost -p 6432 -U your_db_user -d your_db
 
 *** Enable pg_search-related extensions (optional)
 
-The PostgreSQL image includes =postgresql-contrib= so extensions commonly used by Rails =pg_search= are available.
+The PostgreSQL image includes =postgresql-contrib= so extensions commonly used by Rails =pg_search= can be enabled manually.
 
 Run once in your target database:
 #+begin_src sql

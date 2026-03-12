@@ -189,7 +189,7 @@ test_postgresql_integration() {
     # Validate pg_search prerequisite extensions are installable in image
     local dockerfile="$SCRIPT_DIR/Dockerfile.postgres-walg"
     if [[ -f "$dockerfile" ]]; then
-        if grep -q "postgresql-contrib" "$dockerfile"; then
+        if grep -A 40 "apt-get install -y --no-install-recommends" "$dockerfile" | grep -q "postgresql-contrib"; then
             pass "Dockerfile includes postgresql-contrib for pg_search-related extensions"
         else
             warn "Dockerfile missing postgresql-contrib (pg_search extension prerequisites may be unavailable)"
