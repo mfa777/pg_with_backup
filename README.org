@@ -8,6 +8,7 @@ Production-ready PostgreSQL setup with automated, encrypted backups to remote st
 ** Features
 
 - PostgreSQL Database (customizable version, default 17.6)
+- Built-in PostgreSQL contrib extensions available for =pg_search= (e.g. =pg_trgm=, =unaccent=)
 - Two backup modes: SQL (full dumps) or WAL-G (incremental with PITR)
 - Automated backup scheduling and retention policies
 - Optional PgBouncer connection pooling
@@ -154,6 +155,16 @@ psql -h localhost -p 6432 -U your_db_user -d your_db
 
 
 ** Database Access
+
+*** Enable pg_search-related extensions (optional)
+
+The PostgreSQL image includes =postgresql-contrib= so extensions commonly used by Rails =pg_search= are available.
+
+Run once in your target database:
+#+begin_src sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+#+end_src
 
 *** Direct PostgreSQL Connection
 

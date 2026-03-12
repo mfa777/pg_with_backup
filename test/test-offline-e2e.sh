@@ -185,6 +185,18 @@ test_postgresql_integration() {
     else
         skip "postgresql.conf.template not found"
     fi
+
+    # Validate pg_search prerequisite extensions are installable in image
+    local dockerfile="$SCRIPT_DIR/Dockerfile.postgres-walg"
+    if [[ -f "$dockerfile" ]]; then
+        if grep -q "postgresql-contrib" "$dockerfile"; then
+            pass "Dockerfile includes postgresql-contrib for pg_search-related extensions"
+        else
+            warn "Dockerfile missing postgresql-contrib (pg_search extension prerequisites may be unavailable)"
+        fi
+    else
+        skip "Dockerfile.postgres-walg not found"
+    fi
     
     # Test wal-g runner script
     local runner_script="$SCRIPT_DIR/scripts/wal-g-runner.sh"
