@@ -209,7 +209,7 @@ test_postgresql_integration() {
     # Test pg_search installation in postgres image
     local postgres_dockerfile="$SCRIPT_DIR/Dockerfile.postgres-walg"
     if [[ -f "$postgres_dockerfile" ]]; then
-        if grep -q "postgresql-\${PG_MAJOR}-pg-search" "$postgres_dockerfile"; then
+        if grep -Fq "postgresql-\${PG_MAJOR}-pg-search" "$postgres_dockerfile"; then
             pass "Dockerfile.postgres-walg contains pg_search package installation"
         else
             warn "Dockerfile.postgres-walg missing pg_search package installation"

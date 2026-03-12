@@ -122,6 +122,8 @@ RUN set -eux; \
     PG_MAJOR="$(echo ${POSTGRES_VERSION} | cut -d. -f1)"; \
     . /etc/os-release; \
     pg_search_url=""; \
+    # Fallback distro tags for ParadeDB package naming:
+    # bookworm=Debian 12, trixie=Debian 13, noble=Ubuntu 24.04, jammy=Ubuntu 22.04
     for distro in "${VERSION_CODENAME:-}" bookworm trixie noble jammy; do \
         [ -n "${distro}" ] || continue; \
         candidate="https://github.com/paradedb/paradedb/releases/download/v${PG_SEARCH_VERSION}/postgresql-${PG_MAJOR}-pg-search_${PG_SEARCH_VERSION}-${PG_SEARCH_RELEASE}PARADEDB-${distro}_${arch}.deb"; \
