@@ -8,6 +8,7 @@ This document summarizes all supported environment variables. It is generated/cu
 | POSTGRES_VERSION | core | 17.6 | no | all | PostgreSQL Docker image version (e.g., 17.4, 16.3). Used for base image and as subdirectory in WAL backup storage |
 | POSTGRES_USER | postgres | postgres | yes | all | PostgreSQL superuser name used for backups |
 | POSTGRES_PASSWORD | postgres | (none) | yes | all | PostgreSQL superuser password (must set) |
+| ENABLE_VCHORD | wal_mode | 0 | no | wal | Enable VectorChord preload/extension setup (restart required after first boot) |
 | ENABLE_PGBOUNCER | pgbouncer | 0 | no | all | Enable PgBouncer connection pooler (0=disabled, 1=enabled) |
 | PGBOUNCER_PORT | pgbouncer | 6432 | no | all | PgBouncer listen port inside container |
 | PGBOUNCER_HOST_PORT | pgbouncer | 6432 | no | all | Host port to expose PgBouncer |
@@ -60,4 +61,3 @@ See `docs/env_vars.json` for structured metadata (suitable for code generation, 
 1. Edit `docs/env_vars.json` (source of truth)
 2. Synchronize this Markdown table if variables change
 3. Run tests to ensure no breakage: `./test/run-tests.sh`
-

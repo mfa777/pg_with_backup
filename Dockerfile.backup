@@ -28,18 +28,26 @@ RUN set -eux; \
     rm -rf /var/cache/apk/*
 
 # Download and install wal-g (use Ubuntu build with glibc compatibility)
-ARG WALG_VERSION=v3.0.7
+ARG WALG_VERSION=v3.0.8
+ARG WALG_OS=20.04
 RUN set -eux; \
     apk add --no-cache --virtual .build-deps curl tar wget; \
     echo "Downloading wal-g version ${WALG_VERSION}..."; \
-    wget --no-check-certificate -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/wal-g-pg-ubuntu-20.04-amd64.tar.gz"; \
+    arch="$(apk --print-arch)"; \
+    case "${arch}" in \
+        x86_64) walg_arch="amd64" ;; \
+        aarch64) walg_arch="aarch64" ;; \
+        *) echo "Unsupported architecture: ${arch}"; exit 1 ;; \
+    esac; \
+    walg_asset="wal-g-pg-${WALG_OS}-${walg_arch}.tar.gz"; \
+    wget -O /tmp/wal-g.tar.gz "https://github.com/wal-g/wal-g/releases/download/${WALG_VERSION}/${walg_asset}"; \
     echo "Extracting wal-g..."; \
     cd /tmp && tar -tzf wal-g.tar.gz; \
     tar -xzf /tmp/wal-g.tar.gz -C /usr/local/bin; \
     ls -la /usr/local/bin/wal-g* || echo "No wal-g found after extraction"; \
     # Rename the extracted binary to just 'wal-g' \
-    if [ -f /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 ]; then \
-        mv /usr/local/bin/wal-g-pg-ubuntu-20.04-amd64 /usr/local/bin/wal-g; \
+    if [ -f "/usr/local/bin/wal-g-pg-${WALG_OS}-${walg_arch}" ]; then \
+        mv "/usr/local/bin/wal-g-pg-${WALG_OS}-${walg_arch}" /usr/local/bin/wal-g; \
         chmod +x /usr/local/bin/wal-g; \
         echo "wal-g installed successfully"; \
         # Test the binary with gcompat \

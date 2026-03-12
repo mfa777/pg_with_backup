@@ -20,6 +20,7 @@ wal_compression = on
 max_wal_size = 2GB
 min_wal_size = 512MB
 
+
 # Logging
 log_checkpoints = on
 log_min_duration_statement = 500ms

@@ -11,6 +11,7 @@ Production-ready PostgreSQL setup with automated, encrypted backups to remote st
 - Two backup modes: SQL (full dumps) or WAL-G (incremental with PITR)
 - Automated backup scheduling and retention policies
 - Optional PgBouncer connection pooling
+- Built-in ParadeDB =pg_search= extension support in PostgreSQL image
 - Telegram notifications on backup failures
 - Optional pgAdmin web interface
 
