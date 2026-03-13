@@ -32,25 +32,17 @@ TEST_WAL_BATCH_SIZE=${TEST_WAL_BATCH_SIZE:-$BATCH_SIZE_DEFAULT}
 CLEANUP=${CLEANUP:-0}  # set to 1 to bring the stack down at the end
 FORCE_EMPTY_PGDATA=${FORCE_EMPTY_PGDATA:-0} # set to 1 to remove postgres-data volume before starting
 
-# Load .env if present to obtain POSTGRES_USER etc.
-if [[ -f "$ENV_FILE" ]]; then
-  # shellcheck disable=SC1090
-  set -o allexport
-  # Use a subshell to avoid polluting current shell with unknown vars
-  ( source "$ENV_FILE" >/dev/null 2>&1 ) || true
-  set +o allexport
-fi
-
-POSTGRES_USER="${POSTGRES_USER:-postgres}"
-POSTGRES_DB="${POSTGRES_DB:-postgres}"
 # Load environment from .env file if it exists
 if [[ -f "$ENV_FILE" ]]; then
   # Export variables from .env file to make them available to the test script
+  # shellcheck disable=SC1090
   set -a
   source "$ENV_FILE"
   set +a
 fi
 
+POSTGRES_USER="${POSTGRES_USER:-postgres}"
+POSTGRES_DB="${POSTGRES_DB:-postgres}"
 BACKUP_MODE="${BACKUP_MODE:-sql}"
 
 echof() { printf "%s\n" "$*"; }
@@ -315,11 +307,7 @@ if [[ "$BACKUP_MODE" == "wal" ]]; then
   if [ -f "$REPO_DIR/test/test-walg-functions.sh" ]; then
     # Source the test functions and run them
     source "$REPO_DIR/test/test-walg-functions.sh"
-    
-    # Set the container IDs for the walg test functions  
-    CONTAINER_ID="$CONTAINER_ID"
-    BACKUP_CONTAINER_ID="$BACKUP_CONTAINER_ID"
-    
+
     # Run the specific tests
     test_archive_command_wal_push
     echo ""

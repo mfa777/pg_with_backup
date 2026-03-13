@@ -3,6 +3,7 @@
 # - In BACKUP_MODE=wal it can provision a local SSH key under secrets/walg_ssh_key
 #   so the postgres wal-g setup can proceed in the test container.
 # - Adds fast/quiet flags to speed local iterations and reduce noisy output.
+# - Use --offline to run only tests that don't require Docker.
 
 set -euo pipefail
 
@@ -20,6 +21,7 @@ QUIET=${QUIET:-0}
 FAST=${FAST:-1}           # When 1, skip heavyweight E2E flows when possible (default)
 E2E=${E2E:-0}             # Force running heavyweight E2E
 REUSE=${REUSE:-0}         # When 1, do not cleanup containers/volumes
+OFFLINE=${OFFLINE:-0}     # When 1, run only offline tests (no Docker required)
 
 print() {
 	# print only when not in quiet mode
@@ -33,14 +35,15 @@ usage() {
 Usage: $(basename "$0") [options] [-- extra-args]
 
 Options:
-		-q, --quiet            Reduce output from this wrapper and child scripts
-		-f, --fast, --quick    Faster run (skips heavy WAL-G E2E in basic mode)
-											Default: fast. Combine with --e2e for fast E2E.
-				--e2e              Run WAL-G E2E (respects --fast unless --full is used)
-				--full             Run full WAL-G E2E (disables fast mode)
-			--mode <sql|wal>   Override BACKUP_MODE
-			--reuse            Skip environment cleanup for faster re-runs
-			--no-cleanup       Alias for --reuse
+	-q, --quiet            Reduce output from this wrapper and child scripts
+	-f, --fast, --quick    Faster run (skips heavy WAL-G E2E in basic mode)
+	                       Default: fast. Combine with --e2e for fast E2E.
+	    --e2e              Run WAL-G E2E (respects --fast unless --full is used)
+	    --full             Run full WAL-G E2E (disables fast mode)
+	    --offline          Run offline tests only (no Docker required)
+	    --mode <sql|wal>   Override BACKUP_MODE
+	    --reuse            Skip environment cleanup for faster re-runs
+	    --no-cleanup       Alias for --reuse
 	-h, --help             Show this help
 
 Environment:
@@ -49,24 +52,25 @@ Environment:
 	FAST=1                 Same as --fast
 	E2E=1                  Same as --e2e
 	REUSE=1                Same as --reuse
+	OFFLINE=1              Same as --offline
 
 Examples:
 	BACKUP_MODE=wal $0 --fast --quiet
 	$0 --mode sql -q --reuse
+	$0 --offline
 EOF
 }
 
-# Determine mode from environment or .env
-BACKUP_MODE="${BACKUP_MODE:-}"
-if [[ -z "$BACKUP_MODE" && -f "$SCRIPT_DIR/.env" ]]; then
-	# shellcheck disable=SC1090
-	set -o allexport
-	source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true
-	set +o allexport
-	BACKUP_MODE="${BACKUP_MODE:-}"
-fi
+load_env_file() {
+	if [[ -f "$SCRIPT_DIR/.env" ]]; then
+		# shellcheck disable=SC1090
+		set -o allexport
+		source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true
+		set +o allexport
+	fi
+}
 
-# Parse CLI flags
+# Parse CLI flags (before .env loading so --offline can skip it)
 PASS_ARGS=()
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -82,6 +86,9 @@ while [[ $# -gt 0 ]]; do
 		--full)
 			E2E=1
 			FAST=0
+			;;
+		--offline)
+			OFFLINE=1
 			;;
 		--mode)
 			BACKUP_MODE="${2:-}"
@@ -109,8 +116,37 @@ while [[ $# -gt 0 ]]; do
 	shift || true
 done
 
+# Determine mode from environment or .env (skip in offline mode to avoid
+# exporting Docker-only vars like TZ into test subprocesses).
+BACKUP_MODE="${BACKUP_MODE:-}"
+if [[ "$OFFLINE" != "1" && -z "$BACKUP_MODE" ]]; then
+	load_env_file
+	BACKUP_MODE="${BACKUP_MODE:-}"
+fi
+
 # Child scripts can honor these too
-export QUIET FAST E2E REUSE
+export QUIET FAST E2E REUSE OFFLINE
+
+run_offline() {
+	print "Running offline tests (no Docker required)..."
+	local failed=0
+
+	if [[ -f "$SCRIPT_DIR/test/test-regression.sh" ]]; then
+		print "--- Regression tests ---"
+		bash "$SCRIPT_DIR/test/test-regression.sh" || failed=1
+	fi
+
+	if [[ -f "$SCRIPT_DIR/test/test-offline-e2e.sh" ]]; then
+		print "--- Offline WAL-G E2E tests ---"
+		bash "$SCRIPT_DIR/test/test-offline-e2e.sh" || failed=1
+	fi
+
+	if [[ "$failed" == "1" ]]; then
+		echo "Some offline tests failed." >&2
+		exit 1
+	fi
+	print "All offline tests passed."
+}
 
 run_sql_mode() {
 	print "Running tests in SQL backup mode..."
@@ -124,8 +160,8 @@ run_wal_mode() {
 
 	# If ENABLE_SSH_SERVER=1 then setup local ssh server, else rely on existing WALG_SSH_PREFIX
 	ENABLE_SSH_SERVER_VAL="${ENABLE_SSH_SERVER:-}"; export ENABLE_SSH_SERVER_VAL
-	if [[ -z "$ENABLE_SSH_SERVER_VAL" && -f "$SCRIPT_DIR/.env" ]]; then
-		set -o allexport; source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true; set +o allexport
+	if [[ -z "$ENABLE_SSH_SERVER_VAL" ]]; then
+		load_env_file
 		ENABLE_SSH_SERVER_VAL="${ENABLE_SSH_SERVER:-}"; export ENABLE_SSH_SERVER_VAL
 	fi
 
@@ -136,9 +172,7 @@ run_wal_mode() {
 	else
 		# Ensure WALG_SSH_PREFIX present unless internal server is requested later
 		if [[ -z "${WALG_SSH_PREFIX:-}" ]]; then
-			if [[ -f "$SCRIPT_DIR/.env" ]]; then
-				set -o allexport; source "$SCRIPT_DIR/.env" >/dev/null 2>&1 || true; set +o allexport
-			fi
+			load_env_file
 		fi
 		if [[ -z "${WALG_SSH_PREFIX:-}" ]]; then
 			echo "Error: WALG_SSH_PREFIX must be set in environment or .env for WAL mode when ENABLE_SSH_SERVER!=1" >&2
@@ -147,22 +181,22 @@ run_wal_mode() {
 		fi
 	fi
 
-		# Choose between full E2E and faster basic run
-		if [[ "$FAST" == "1" && "$E2E" != "1" ]]; then
-			print "Fast mode: running basic WAL-G tests (skip heavy E2E). Use --e2e for full run."
+	# Choose between full E2E and faster basic run
+	if [[ "$FAST" == "1" && "$E2E" != "1" ]]; then
+		print "Fast mode: running basic WAL-G tests (skip heavy E2E). Use --e2e for full run."
+		FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
+			"$TEST_SCRIPT" "${PASS_ARGS[@]}"
+	else
+		print "Running comprehensive WAL-G E2E tests..."
+		if [[ -f "$SCRIPT_DIR/test/test-walg-e2e.sh" ]]; then
+			FORCE_EMPTY_PGDATA=1 CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
+				"$SCRIPT_DIR/test/test-walg-e2e.sh" "${PASS_ARGS[@]}"
+		else
+			print "WAL-G E2E test script not found, falling back to basic tests..."
 			FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
 				"$TEST_SCRIPT" "${PASS_ARGS[@]}"
-		else
-			print "Running comprehensive WAL-G E2E tests..."
-			if [[ -f "$SCRIPT_DIR/test/test-walg-e2e.sh" ]]; then
-				FORCE_EMPTY_PGDATA=1 CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
-					"$SCRIPT_DIR/test/test-walg-e2e.sh" "${PASS_ARGS[@]}"
-			else
-				print "WAL-G E2E test script not found, falling back to basic tests..."
-				FORCE_EMPTY_PGDATA=1 SKIP_SSH_KEYSCAN=1 BACKUP_MODE=wal CLEANUP=$([[ "$REUSE" == "1" ]] && echo 0 || echo 1) \
-					"$TEST_SCRIPT" "${PASS_ARGS[@]}"
-			fi
 		fi
+	fi
 
 	# Clean up test environment unless reusing
 	if [[ "$REUSE" != "1" ]]; then
@@ -177,6 +211,12 @@ run_wal_mode() {
 		print "Reuse enabled: keeping environment for faster subsequent runs."
 	fi
 }
+
+# Handle --offline mode first (no Docker, no BACKUP_MODE needed)
+if [[ "$OFFLINE" == "1" ]]; then
+	run_offline
+	exit $?
+fi
 
 case "$BACKUP_MODE" in
 	wal|WAL|Wal)

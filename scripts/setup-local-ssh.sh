@@ -10,7 +10,6 @@ SSH_KEY_DIR="$SCRIPT_DIR/secrets/walg_ssh_key"
 
 echof() { echo "== $* =="; }
 pass() { echo "PASS: $*"; }
-die() { echo "FAIL: $*" >&2; exit 1; }
 
 # Check if .env file exists
 if [[ ! -f "$ENV_FILE" ]]; then
