@@ -100,13 +100,18 @@ WALG_BASEBACKUP_CRON="30 1 * * *"
 WALG_CLEAN_CRON="15 3 * * *"
 
 # --- Local SSH Server for Testing (Optional) ---
-# ENABLE_SSH_SERVER=1: 自动启用内部 ssh-server (docker compose --profile ssh-testing)，
-# 并使用默认: WALG_SSH_PREFIX=ssh://walg@ssh-server/backups  SSH_PORT=2222  SSH_USER=walg
-# ENABLE_SSH_SERVER=0: 需要自行提供一个可访问的 WALG_SSH_PREFIX (例如外部机器)
-# WALG_SSH_PREFIX 在 ENABLE_SSH_SERVER=1 时可留空，会被自动填入默认值
+# ENABLE_SSH_SERVER=1: Automatically enable the internal ssh-server (use
+#                    `docker compose --profile ssh-testing`).
+# Defaults when enabled: WALG_SSH_PREFIX=ssh://walg@ssh-server/backups,
+#                    SSH_PORT=2222, SSH_USER=walg
+# ENABLE_SSH_SERVER=0: You must provide an accessible WALG_SSH_PREFIX
+#                    (for example, an external host).
+# When ENABLE_SSH_SERVER=1, WALG_SSH_PREFIX may be left empty and a
+#                    sensible default will be applied automatically.
 ENABLE_SSH_SERVER=0
 
-# SSH user for test server (留空则会从 WALG_SSH_PREFIX 推断；仅在需要覆盖时设置)
+# SSH user for test server (leave empty to derive from WALG_SSH_PREFIX;
+# set only to override)
 SSH_USER=
 
 # Skip ssh-keyscan for host key verification (useful with internal test SSH server)
