@@ -33,6 +33,40 @@ Production-ready PostgreSQL setup with automated, encrypted backups to remote st
 | =docs/= | Extended documentation (env vars reference, testing guides, etc.) |
 | =secrets/= | Local SSH keys for testing (not committed to production) |
 
+** Container Architecture
+
+The stack runs two core service containers with clearly separated responsibilities:
+
+*** =postgres= (built from =Dockerfile.postgres-walg=)
+
+Runs PostgreSQL and owns all real-time data operations:
+
+- Starts and manages the PostgreSQL server process
+- In WAL mode: continuously archives WAL segments to remote storage via =archive_command = 'wal-g wal-push %p'= — this happens inside this container, not the backup container
+- Hosts optional services that must be co-located with PostgreSQL: PgBouncer (connection pooler) and VectorChord / pgvector / pg_search extensions
+- =wal-g= binary is installed here so the archive command can execute it in-process without an IPC round-trip
+
+*** =backup= (built from =Dockerfile.backup=)
+
+Alpine-based sidecar responsible for scheduled, operator-triggered backup and retention tasks:
+
+- *SQL mode*: cron runs =backup.sh= on the configured schedule → =pg_dumpall= → gzip → Age encryption → Rclone upload → remote retention cleanup
+- *WAL mode*: cron runs =wal-g-runner.sh backup= (base backup / =backup-push=) and =wal-g-runner.sh clean= (retention / =delete retain FULL N=) on independent schedules; also handles SSH key setup and =.walg_env= preparation via =walg-env-prepare.sh=
+- Sends Telegram notifications on failure
+- Mounts the =pg_data= volume read-write so =backup-push= can read =PGDATA= directly
+
+*Summary table:*
+
+| Task | Container |
+|------|-----------|
+| PostgreSQL server | =postgres= |
+| WAL segment archiving (=wal-push=, continuous) | =postgres= |
+| SQL dump + encrypt + upload (scheduled) | =backup= |
+| Base backup (=backup-push=, scheduled) | =backup= |
+| Retention cleanup (=delete retain FULL=, scheduled) | =backup= |
+| PgBouncer connection pooler | =postgres= |
+| pgvector / VectorChord / pg_search extensions | =postgres= |
+
 ** Quick Start
 
 1. *Create environment file:*
