@@ -11,9 +11,27 @@ Production-ready PostgreSQL setup with automated, encrypted backups to remote st
 - Two backup modes: SQL (full dumps) or WAL-G (incremental with PITR)
 - Automated backup scheduling and retention policies
 - Optional PgBouncer connection pooling
-- Built-in ParadeDB =pg_search= extension support in PostgreSQL image
+- Built-in extensions: [[https://github.com/pgvector/pgvector][pgvector]] (vector similarity search), [[https://github.com/tensorchord/VectorChord][VectorChord]] (advanced vector indexing, opt-in via =ENABLE_VCHORD=1=), [[https://github.com/paradedb/paradedb][ParadeDB pg_search]] (full-text search)
 - Telegram notifications on backup failures
 - Optional pgAdmin web interface
+
+** Project Structure
+
+| Path | Description |
+|------|-------------|
+| =docker-compose.yml= | Service definitions: postgres, backup, ssh-server (testing), pgadmin |
+| =Dockerfile.postgres-walg= | PostgreSQL image with wal-g, pgvector, VectorChord, pg_search, PgBouncer |
+| =Dockerfile.backup= | Alpine-based backup sidecar (SQL dump or wal-g cron) |
+| =backup.sh= | SQL mode backup script (pg_dumpall → gzip → age → rclone) |
+| =entrypoint-backup.sh= | Backup container entrypoint, sets up cron for SQL or WAL mode |
+| =postgresql.conf.template= | PostgreSQL configuration template (WAL archiving settings) |
+| =pgbouncer.ini.template= | PgBouncer configuration template |
+| =env_sample= | Environment variable template — copy to =.env= to configure |
+| =run-tests= | Top-level test runner wrapper with CLI flags |
+| =scripts/= | Runtime scripts (entrypoint, wal-g helpers, PgBouncer setup, SSH setup) |
+| =test/= | Integration and regression tests |
+| =docs/= | Extended documentation (env vars reference, testing guides, etc.) |
+| =secrets/= | Local SSH keys for testing (not committed to production) |
 
 ** Quick Start
 
@@ -106,28 +124,12 @@ SQL_BACKUP_RETAIN_DAYS=30
 
 3. *⚠️ IMPORTANT: Create first base backup manually*
 
-   After the WAL mode container is running in production, *you must manually execute the first base backup*:
+   After the WAL mode container starts, create the first base backup so PITR is available immediately (WAL archiving starts automatically, but recovery requires at least one base backup):
    
    #+begin_src bash
    sudo docker compose exec backup bash -c "/opt/walg/scripts/wal-g-runner.sh backup"
-   #+end_src
-
-   *Why is this required?*
    
-   - WAL archiving starts automatically when PostgreSQL starts
-   - However, WAL-G requires at least one base backup before you can perform point-in-time recovery
-   - The automated cron schedule runs at scheduled times (e.g., daily at 1:30 AM)
-   - By manually creating the first base backup immediately after deployment, you ensure:
-     - You have a recovery point from the start of production operations
-     - WAL files archived after this base backup can be used for PITR
-     - You don't have to wait for the first scheduled backup to have disaster recovery capability
-
-   *Verify the backup succeeded:*
-   #+begin_src bash
-   # Check the backup logs
-   sudo docker compose logs backup
-   
-   # List available backups
+   # Verify
    sudo docker compose exec postgres wal-g backup-list
    #+end_src
 
@@ -141,33 +143,17 @@ Enable PgBouncer for connection pooling:
 # In .env file
 ENABLE_PGBOUNCER=1
 PGBOUNCER_PORT=6432
-PGBOUNCER_POOL_MODE=session
+PGBOUNCER_POOL_MODE=session       # session | transaction | statement
 PGBOUNCER_MAX_CLIENT_CONN=100
 PGBOUNCER_DEFAULT_POOL_SIZE=20
 #+end_src
 
-Connect to PgBouncer on port 6432 instead of PostgreSQL's port 5432:
-#+begin_src bash
-psql -h localhost -p 6432 -U your_db_user -d your_db
-#+end_src
-
-*Note:* By default, only =POSTGRES_USER= is configured for PgBouncer. To add additional users, you'll need to update =/etc/pgbouncer/userlist.txt= inside the container. See =env_sample= for detailed instructions.
+*Note:* Only =POSTGRES_USER= is configured for PgBouncer by default. To add users, update =/etc/pgbouncer/userlist.txt= inside the container.
 
 
 ** Database Access
 
-*** Direct PostgreSQL Connection
-
-Connect using psql or any PostgreSQL client:
-#+begin_src bash
-psql -h localhost -p 5432 -U your_db_user -d your_db
-#+end_src
-
-*** pgAdmin Web Interface
-
-Access pgAdmin at =http://localhost:8080= with credentials from your =.env= file (default: admin@admin.com / admin).
-
-*** From Another Docker Container
+*** Via Docker Network (Recommended)
 
 If your application runs in a Docker container, use the shared network:
 #+begin_src yaml
@@ -184,6 +170,22 @@ networks:
     external: true
     name: postgres-network
 #+end_src
+
+*** Via PgBouncer (Host Access)
+
+When =ENABLE_PGBOUNCER=1=, connect through PgBouncer on port 6432:
+#+begin_src bash
+psql -h localhost -p 6432 -U your_db_user -d your_db
+#+end_src
+
+*Note:* PostgreSQL port 5432 is not exposed to the host by default. To access PostgreSQL directly from the host, add a port mapping in =docker-compose.yml=, or use =docker exec=:
+#+begin_src bash
+docker exec -it postgres psql -U your_db_user -d your_db
+#+end_src
+
+*** pgAdmin Web Interface
+
+Access pgAdmin at =http://localhost:8080= with credentials from your =.env= file (default: admin@admin.com / admin).
 
 ** Monitoring and Troubleshooting
 
@@ -218,37 +220,19 @@ sudo docker compose exec postgres wal-g --version
 *** Common Issues (WAL Mode)
 
 **** SSH Authentication Error
-If you see an error like:
-#+begin_example
-ERROR: ssh: handshake failed: ssh: unable to authenticate, attempted methods [none]
-#+end_example
-
-This was a known issue that has been fixed. The system now includes a wal-g wrapper script that automatically sources the environment file containing SSH credentials. Make sure you're using the latest version with the wrapper script installed.
-
-To verify the fix is working:
+If you see =ssh: handshake failed: ssh: unable to authenticate=, ensure you're using the latest version — the wal-g wrapper script now auto-loads SSH credentials. Verify with:
 #+begin_src bash
-# Check that wal-g wrapper is installed
-sudo docker exec postgres which wal-g
-# Output should be: /usr/local/bin/wal-g
-
-# Check that environment file exists
-sudo docker exec postgres test -f /var/lib/postgresql/.walg_env && echo "Environment file exists"
-
-# Test wal-g with environment loaded
 sudo docker exec postgres wal-g backup-list
 #+end_src
 
 **** Debugging SSH Connection
-If you continue to have SSH issues:
 #+begin_src bash
-# Check if SSH key exists
+# Check SSH key and env
 sudo docker exec postgres ls -la /var/lib/postgresql/.ssh/
-
-# Test SSH connection manually
-sudo docker exec postgres su - postgres -c "ssh -v <user>@<host> -p <port>"
-
-# Check WAL-G environment variables
 sudo docker exec postgres cat /var/lib/postgresql/.walg_env
+
+# Test SSH manually
+sudo docker exec postgres su - postgres -c "ssh -v <user>@<host> -p <port>"
 #+end_src
 
 ** Restore Procedures

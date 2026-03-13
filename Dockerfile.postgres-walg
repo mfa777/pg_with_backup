@@ -78,6 +78,7 @@ COPY scripts/walg-env-prepare.sh /opt/walg/scripts/walg-env-prepare.sh
 COPY scripts/docker-entrypoint-walg.sh /usr/local/bin/docker-entrypoint-walg.sh
 COPY scripts/setup-pgbouncer.sh /opt/scripts/setup-pgbouncer.sh
 COPY scripts/wal-g-wrapper.sh /opt/walg/scripts/wal-g-wrapper.sh
+COPY scripts/notify.sh /opt/scripts/notify.sh
 
 # Make scripts executable
 RUN chmod +x /opt/walg/scripts/*.sh /usr/local/bin/docker-entrypoint-walg.sh /opt/scripts/setup-pgbouncer.sh
@@ -88,59 +89,24 @@ RUN mv /usr/local/bin/wal-g /usr/local/bin/wal-g.bin && \
     cp /opt/walg/scripts/wal-g-wrapper.sh /usr/local/bin/wal-g && \
     chmod +x /usr/local/bin/wal-g
 
+# Copy and use the reusable extension installer
+COPY scripts/install-extensions.sh /tmp/install-extensions.sh
+RUN chmod +x /tmp/install-extensions.sh
+
 # Build and install pgvector extension (optional - skip if build fails)
-RUN set -eux; \
-    PG_MAJOR="$(echo ${POSTGRES_VERSION} | cut -d. -f1)"; \
-    if apt-get update && apt-get install -y --no-install-recommends "postgresql-server-dev-${PG_MAJOR}"; then \
-        git clone --depth 1 https://github.com/pgvector/pgvector.git /tmp/pgvector; \
-        cd /tmp/pgvector; \
-        make && make install; \
-        rm -rf /tmp/pgvector; \
-    else \
-        echo "Skipping pgvector build due to dependency issues"; \
-    fi; \
-    rm -rf /var/lib/apt/lists/*
+RUN /tmp/install-extensions.sh pgvector
 
 # Install VectorChord extension
 ARG VCHORD_VERSION=1.0.0
 ARG VCHORD_RELEASE=1
-RUN set -eux; \
-    arch="$(dpkg --print-architecture)"; \
-    PG_MAJOR="$(echo ${POSTGRES_VERSION} | cut -d. -f1)"; \
-    vchord_pkg="postgresql-${PG_MAJOR}-vchord_${VCHORD_VERSION}-${VCHORD_RELEASE}_${arch}.deb"; \
-    wget --tries=3 -O "/tmp/${vchord_pkg}" "https://github.com/tensorchord/VectorChord/releases/download/${VCHORD_VERSION}/${vchord_pkg}"; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends "/tmp/${vchord_pkg}"; \
-    rm -f "/tmp/${vchord_pkg}"; \
-    rm -rf /var/lib/apt/lists/*
+RUN /tmp/install-extensions.sh vchord "$VCHORD_VERSION" "$VCHORD_RELEASE"
 
 # Install ParadeDB pg_search extension
 ARG PG_SEARCH_VERSION=0.21.13
 ARG PG_SEARCH_RELEASE=1
-RUN set -eux; \
-    arch="$(dpkg --print-architecture)"; \
-    PG_MAJOR="$(echo ${POSTGRES_VERSION} | cut -d. -f1)"; \
-    . /etc/os-release; \
-    pg_search_url=""; \
-    # Fallback distro tags for ParadeDB package naming:
-    # bookworm=Debian 12, trixie=Debian 13, noble=Ubuntu 24.04, jammy=Ubuntu 22.04
-    for distro in "${VERSION_CODENAME:-}" bookworm trixie noble jammy; do \
-        [ -n "${distro}" ] || continue; \
-        candidate="https://github.com/paradedb/paradedb/releases/download/v${PG_SEARCH_VERSION}/postgresql-${PG_MAJOR}-pg-search_${PG_SEARCH_VERSION}-${PG_SEARCH_RELEASE}PARADEDB-${distro}_${arch}.deb"; \
-        if wget -q --spider "${candidate}"; then \
-            pg_search_url="${candidate}"; \
-            break; \
-        fi; \
-    done; \
-    if [ -z "${pg_search_url}" ]; then \
-        echo "Could not find pg_search package for postgresql-${PG_MAJOR} (${arch}) in v${PG_SEARCH_VERSION}" >&2; \
-        exit 1; \
-    fi; \
-    wget --tries=3 -O /tmp/pg_search.deb "${pg_search_url}"; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends /tmp/pg_search.deb; \
-    rm -f /tmp/pg_search.deb; \
-    rm -rf /var/lib/apt/lists/*
+RUN /tmp/install-extensions.sh pg_search "$PG_SEARCH_VERSION" "$PG_SEARCH_RELEASE"
+
+RUN rm -f /tmp/install-extensions.sh
 
 # Use our custom entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint-walg.sh"]

@@ -2,6 +2,7 @@
 set -e
 
 # Enhanced entrypoint script that handles both SQL and WAL backup modes
+WALG_ENV_PREPARE_SCRIPT="${WALG_ENV_PREPARE_SCRIPT:-/opt/walg/scripts/walg-env-prepare.sh}"
 
 # Set timezone
 if [ -n "$TZ" ]; then
@@ -18,20 +19,28 @@ setup_sql_mode() {
 
 # Function to setup WAL mode cron
 setup_wal_mode() {
+    local basebackup_cron="${WALG_BASEBACKUP_CRON:-30 1 * * *}"
+    local clean_cron="${WALG_CLEAN_CRON:-15 3 * * *}"
+
     echo "Setting up WAL-G backup mode"
     
     # Prepare wal-g environment
-    source /opt/walg/scripts/walg-env-prepare.sh
+    if [ ! -f "$WALG_ENV_PREPARE_SCRIPT" ]; then
+        echo "ERROR: WAL-G env prepare script not found at $WALG_ENV_PREPARE_SCRIPT"
+        exit 1
+    fi
+    # shellcheck disable=SC1090
+    source "$WALG_ENV_PREPARE_SCRIPT"
     
     # Setup cron jobs for base backup and cleanup
     {
-        echo "${WALG_BASEBACKUP_CRON:-'30 1 * * *'} /opt/walg/scripts/wal-g-runner.sh backup > /proc/1/fd/1 2>/proc/1/fd/2"
-        echo "${WALG_CLEAN_CRON:-'15 3 * * *'} /opt/walg/scripts/wal-g-runner.sh clean > /proc/1/fd/1 2>/proc/1/fd/2"
+        echo "${basebackup_cron} /opt/walg/scripts/wal-g-runner.sh backup > /proc/1/fd/1 2>/proc/1/fd/2"
+        echo "${clean_cron} /opt/walg/scripts/wal-g-runner.sh clean > /proc/1/fd/1 2>/proc/1/fd/2"
     } | crontab -
     
     echo "WAL-G cron jobs configured:"
-    echo "  Base backup: ${WALG_BASEBACKUP_CRON:-'30 1 * * *'}"
-    echo "  Cleanup: ${WALG_CLEAN_CRON:-'15 3 * * *'}"
+    echo "  Base backup: ${basebackup_cron}"
+    echo "  Cleanup: ${clean_cron}"
 }
 
 # Main logic based on BACKUP_MODE

@@ -50,5 +50,3 @@ Notes:
 - Build may fail if GitHub runners cannot reach the wal-g binary release or if the pgvector build step fails; check Actions logs for the failing step.
 - If you want multi-arch images, extend the action with `platforms` in the `docker/build-push-action` steps.
 
----
-If you want, I can also apply the `docker-compose.yml` edits that replace the `build:` sections with `image:` lines and add comments to document the external volume requirement. Would you like me to apply that patch now?

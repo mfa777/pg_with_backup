@@ -6,10 +6,13 @@ set -eo pipefail
 
 echo "Starting PostgreSQL with wal-g support..."
 
+# Canonical path for the env preparation script (same var used by entrypoint-backup.sh)
+WALG_ENV_PREPARE_SCRIPT="${WALG_ENV_PREPARE_SCRIPT:-/opt/walg/scripts/walg-env-prepare.sh}"
+
 # Source environment preparation script
 if [ "$BACKUP_MODE" = "wal" ]; then
     echo "WAL-G mode enabled - preparing environment..."
-    source /opt/walg/scripts/walg-env-prepare.sh
+    source "$WALG_ENV_PREPARE_SCRIPT"
     
     # Ensure postgresql.conf has the right settings for wal-g
     # Create a robust configuration setup that works regardless of initialization state

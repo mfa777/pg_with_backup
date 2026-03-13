@@ -50,8 +50,7 @@ This document summarizes all supported environment variables. It is generated/cu
 
 ## Notes
 - "when sql" / "when wal" means required only if that mode is active.
- - "when sql" / "when wal" means required only if that mode is active.
- 
+
 - `WALE_SSH_PREFIX` is emitted automatically; do not set manually unless for legacy tooling.
 
 ## Machine-Readable Format

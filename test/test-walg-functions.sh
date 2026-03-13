@@ -4,33 +4,12 @@ set -euo pipefail
 # WAL-G specific functionality tests
 # Tests archive_command wal-push, backup-push, and delete operations
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
 ENV_FILE="$REPO_DIR/.env"
 COMPOSE_CMD="docker compose"
 POSTGRES_SERVICE_NAME="postgres"
 BACKUP_SERVICE_NAME="backup"
-
-# Avoid sourcing the main run-tests.sh here to prevent recursive execution
-# (sourcing run-tests.sh from this file caused the whole test harness to
-# re-enter itself when run-tests.sh sources this file). Keep local helper
-# fallbacks below instead.
-
-# Helper functions if not already defined
-if ! declare -f echof >/dev/null 2>&1; then
-    echof() { echo "== $* =="; }
-fi
-
-if ! declare -f pass >/dev/null 2>&1; then
-    pass() { echo "PASS: $*"; }
-fi
-
-if ! declare -f skip >/dev/null 2>&1; then
-    skip() { echo "SKIP: $*"; }
-fi
-
-if ! declare -f die >/dev/null 2>&1; then
-    die() { echo "FAIL: $*" >&2; exit 1; }
-fi
 
 # Get container IDs
 get_container_ids() {

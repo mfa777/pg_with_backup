@@ -140,9 +140,9 @@ TEST_WAIT_TIMEOUT=180 BACKUP_MODE=wal ./run-tests
 ```
 
 ### Build failures
-If Docker builds fail due to network issues, you can still test the integration logic:
+If Docker builds fail due to network issues, ensure Docker can reach the internet (wal-g binary download, base images). Use `--no-cache` to retry cleanly:
 ```bash
-./demo-integration.sh  # Shows what the integration would do
+docker compose build --no-cache
 ```
 
 ## Legacy Compatibility

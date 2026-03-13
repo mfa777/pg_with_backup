@@ -5,16 +5,11 @@ set -euo pipefail
 # Tests wal-push, backup-push, and delete operations using mock wal-g
 # This script works without external network dependencies
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+SCRIPT_DIR="$REPO_DIR"
 MOCK_WALG="$SCRIPT_DIR/scripts/mock-wal-g.sh"
 MOCK_BACKUP_DIR="/tmp/mock-walg-backups"
-
-# Helper functions
-echof() { echo "== $* =="; }
-die() { echo "FAIL: $*" >&2; exit 1; }
-pass() { echo "PASS: $*"; }
-skip() { echo "SKIP: $*"; }
-warn() { echo "WARN: $*"; }
 
 # Setup mock environment
 setup_mock_env() {
@@ -209,7 +204,7 @@ test_postgresql_integration() {
     # Test pg_search installation in postgres image
     local postgres_dockerfile="$SCRIPT_DIR/Dockerfile.postgres-walg"
     if [[ -f "$postgres_dockerfile" ]]; then
-        if grep -Fq "postgresql-\${PG_MAJOR}-pg-search" "$postgres_dockerfile"; then
+        if grep -q "install-extensions.sh pg_search" "$postgres_dockerfile"; then
             pass "Dockerfile.postgres-walg contains pg_search package installation"
         else
             warn "Dockerfile.postgres-walg missing pg_search package installation"

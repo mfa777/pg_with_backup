@@ -5,27 +5,11 @@ set -euo pipefail
 # Tests that PgBouncer is properly configured and can proxy connections to PostgreSQL
 # Note: PgBouncer runs within the PostgreSQL container, not as a separate service
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
 ENV_FILE="$REPO_DIR/.env"
 COMPOSE_CMD="docker compose"
 POSTGRES_SERVICE_NAME="postgres"
-
-# Helper functions if not already defined
-if ! declare -f echof >/dev/null 2>&1; then
-    echof() { echo "== $* =="; }
-fi
-
-if ! declare -f pass >/dev/null 2>&1; then
-    pass() { echo "PASS: $*"; }
-fi
-
-if ! declare -f skip >/dev/null 2>&1; then
-    skip() { echo "SKIP: $*"; }
-fi
-
-if ! declare -f die >/dev/null 2>&1; then
-    die() { echo "FAIL: $*" >&2; exit 1; }
-fi
 
 # Load environment variables
 if [[ -f "$ENV_FILE" ]]; then

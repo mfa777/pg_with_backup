@@ -20,6 +20,10 @@ Or with cleanup enabled (brings down the stack after tests):
 
 CLEANUP=1 ./run-tests.sh
 
+Run fast, Docker-free regression checks for critical shell-script behavior:
+
+./test/test-regression.sh
+
 ** Test Coverage
 
 The test script performs the following validations:

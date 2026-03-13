@@ -1,5 +1,5 @@
 #!/bin/bash -l
-set -eo pipefail # Exit on error, treat unset variables as errors, pipe failures
+set -eo pipefail # Exit on error, and fail pipelines when any command fails
 
 ###############################################################################
 # PostgreSQL Docker Compose Backup Script
@@ -27,8 +27,8 @@ set -eo pipefail # Exit on error, treat unset variables as errors, pipe failures
 PGUSER="${POSTGRES_USER:-postgres}"
 PGHOST="${PGHOST:-postgres}" # Connect to the postgres container
 PGPORT="${POSTGRES_PORT:-5432}"
-BACKUP_DIR="/tmp/backups"
-STATE_DIR="/var/lib/backup/state" # Directory within the backup service's persistent volume
+BACKUP_DIR="${BACKUP_DIR:-/tmp/backups}"
+STATE_DIR="${BACKUP_STATE_DIR:-/var/lib/backup/state}" # Directory within the backup service's persistent volume
 LAST_HASH_FILE="${STATE_DIR}/last_backup.hash"
 KEEP_DAYS=${SQL_BACKUP_RETAIN_DAYS:-7} # How many days of backups to keep remotely, default to 7
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -47,16 +47,22 @@ TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN}"
 TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID}"
 TELEGRAM_MESSAGE_PREFIX="${TELEGRAM_MESSAGE_PREFIX}"
 
-send_telegram_message() {
-  if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
-    local message="[${TELEGRAM_MESSAGE_PREFIX}] $1"
-    # Use timeout to prevent script hanging
-    timeout 10s curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-      -d chat_id="${TELEGRAM_CHAT_ID}" \
-      -d text="${message}" \
-      -d parse_mode="Markdown" || echo "Telegram notification failed."
-  fi
-}
+# Source shared notification helpers
+NOTIFY_SCRIPT="${NOTIFY_SCRIPT:-/opt/scripts/notify.sh}"
+if [ -f "$NOTIFY_SCRIPT" ]; then
+  source "$NOTIFY_SCRIPT"
+else
+  # Inline fallback so the script works even without notify.sh
+  send_telegram_message() {
+    if [[ -n "$TELEGRAM_BOT_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
+      local message="[${TELEGRAM_MESSAGE_PREFIX}] $1"
+      timeout 10s curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -d chat_id="${TELEGRAM_CHAT_ID}" \
+        -d text="${message}" \
+        -d parse_mode="Markdown" || echo "Telegram notification failed."
+    fi
+  }
+fi
 
 # --- Cleanup function to ensure we don't leave temporary files ---
 cleanup() {
@@ -150,19 +156,20 @@ fi
 RCLONE_CONFIG_OPT="--config $RCLONE_CONFIG_DIR/rclone.conf"
 
 # --- Upload to remote and cleanup old backups only if upload successful ---
-if rclone copy "$ENC_FILE" "$REMOTE_PATH/" $RCLONE_CONFIG_OPT --progress; then
-  echo "Upload complete."
-
-  # --- Cleanup old backups ---
-  echo "Cleaning up remote backups older than $KEEP_DAYS days..."
-  if ! rclone delete "$REMOTE_PATH/" --min-age "${KEEP_DAYS}d" $RCLONE_CONFIG_OPT --progress; then
-    echo "Warning: Remote cleanup failed, but backup was successful."
-  fi
-  echo "Remote cleanup complete."
-else
+if ! rclone copy "$ENC_FILE" "$REMOTE_PATH/" $RCLONE_CONFIG_OPT --progress; then
   echo "Upload failed, skip deleting old backups."
   send_telegram_message "ERROR: Rclone upload failed. Backup aborted."
+  exit 1
 fi
+
+echo "Upload complete."
+
+# --- Cleanup old backups ---
+echo "Cleaning up remote backups older than $KEEP_DAYS days..."
+if ! rclone delete "$REMOTE_PATH/" --min-age "${KEEP_DAYS}d" $RCLONE_CONFIG_OPT --progress; then
+  echo "Warning: Remote cleanup failed, but backup was successful."
+fi
+echo "Remote cleanup complete."
 
 rm -f "$ENC_FILE" # Remove encrypted file after successful upload
 

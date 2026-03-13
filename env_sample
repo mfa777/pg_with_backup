@@ -21,6 +21,11 @@ POSTGRES_PASSWORD=your_very_strong_superuser_password
 # Enable PgBouncer connection pooler: 0 (disabled, default) or 1 (enabled)
 ENABLE_PGBOUNCER=0
 
+# --- VectorChord Extension (Optional) ---
+# Enable VectorChord preload and extension setup: 0 (disabled, default) or 1 (enabled)
+# Requires PostgreSQL restart after first boot to load shared_preload_libraries
+ENABLE_VCHORD=0
+
 # PgBouncer listen port (default: 6432)
 PGBOUNCER_PORT=6432
 
@@ -104,8 +109,9 @@ ENABLE_SSH_SERVER=0
 # SSH user for test server (留空则会从 WALG_SSH_PREFIX 推断；仅在需要覆盖时设置)
 SSH_USER=
 
-# (Deprecated) WALG_SSH_PREFIX_LOCAL 现已弃用，统一使用 WALG_SSH_PREFIX。
-# WALG_SSH_PREFIX_LOCAL=ssh://walg@ssh-server/backups
+# Skip ssh-keyscan for host key verification (useful with internal test SSH server)
+# 0 = perform keyscan (default), 1 = skip
+SKIP_SSH_KEYSCAN=0
 
 # --- pgAdmin Settings ---
 # pgAdmin (database administration tool) runs on port 8080
