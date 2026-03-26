@@ -61,7 +61,11 @@ jobs:
     needs:
       - create-semver-tag
       - build-and-push-images
-    if: needs.create-semver-tag.outputs.release_tag != '' && (needs.create-semver-tag.outputs.skip_docker == 'true' || needs.build-and-push-images.result == 'success')
+    if: >
+      always() &&
+      needs.create-semver-tag.result == 'success' &&
+      needs.create-semver-tag.outputs.release_tag != '' &&
+      (needs.create-semver-tag.outputs.skip_docker == 'true' || needs.build-and-push-images.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: write
