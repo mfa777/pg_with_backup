@@ -27,9 +27,9 @@ jobs:
         id: docker_policy
         run: |
           commit_message="$(git log -1 --pretty=%B)"
-          if grep -Eq '(#skip-docker|:noimage)' <<<"$commit_message"; then
+          if grep -Eq '#skip-docker' <<<"$commit_message"; then
             echo "skip_docker=true" >> "$GITHUB_OUTPUT"
-            echo "Docker image publishing disabled for this release via #skip-docker / :noimage."
+            echo "Docker image publishing disabled for this release via #skip-docker."
           else
             echo "skip_docker=false" >> "$GITHUB_OUTPUT"
           fi
@@ -60,7 +60,7 @@ jobs:
     needs:
       - create-semver-tag
       - build-and-push-images
-    if: needs.create-semver-tag.outputs.release_tag != '' && (needs.build-and-push-images.result == 'success' || needs.build-and-push-images.result == 'skipped')
+    if: needs.create-semver-tag.outputs.release_tag != '' && (needs.create-semver-tag.outputs.skip_docker == 'true' || needs.build-and-push-images.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -77,7 +77,7 @@ jobs:
             echo "Commit: ${{ github.event.pull_request.merge_commit_sha }}"
             echo "Merged PR: #${{ github.event.pull_request.number }}"
             echo "Merged by: ${{ github.event.pull_request.merged_by.login }}"
-            echo "Docker images: ${{ needs.create-semver-tag.outputs.skip_docker == 'true' && 'skipped (#skip-docker / :noimage)' || 'published' }}"
+            echo "Docker images: ${{ needs.create-semver-tag.outputs.skip_docker == 'true' && 'skipped (#skip-docker)' || 'published' }}"
           } > "$release_asset"
           echo "release_asset=$release_asset" >> "$GITHUB_OUTPUT"
 
