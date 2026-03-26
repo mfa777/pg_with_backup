@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.tag_version.outputs.new_tag }}
+      skip_docker: ${{ steps.docker_policy.outputs.skip_docker }}
 
     steps:
       - name: Checkout merged master commit
@@ -21,6 +22,17 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0
+
+      - name: Detect docker publish policy
+        id: docker_policy
+        run: |
+          commit_message="$(git log -1 --pretty=%B)"
+          if grep -q '#skip-docker' <<<"$commit_message"; then
+            echo "skip_docker=true" >> "$GITHUB_OUTPUT"
+            echo "Docker image publishing disabled for this release via #skip-docker."
+          else
+            echo "skip_docker=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create semantic version tag
         id: tag_version
@@ -34,9 +46,20 @@ jobs:
           TAG_PREFIX: v
           INITIAL_VERSION: 2.3.0
 
-  publish-github-release:
+  build-and-push-images:
     needs: create-semver-tag
     if: needs.create-semver-tag.outputs.release_tag != ''
+    uses: ./.github/workflows/build-and-push.yml
+    with:
+      release_tag: ${{ needs.create-semver-tag.outputs.release_tag }}
+      skip_docker: ${{ needs.create-semver-tag.outputs.skip_docker == 'true' }}
+    secrets: inherit
+
+  publish-github-release:
+    needs:
+      - create-semver-tag
+      - build-and-push-images
+    if: needs.create-semver-tag.outputs.release_tag != '' && (needs.build-and-push-images.result == 'success' || needs.build-and-push-images.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -53,6 +76,7 @@ jobs:
             echo "Commit: ${{ github.event.pull_request.merge_commit_sha }}"
             echo "Merged PR: #${{ github.event.pull_request.number }}"
             echo "Merged by: ${{ github.event.pull_request.merged_by.login }}"
+            echo "Docker images: ${{ needs.create-semver-tag.outputs.skip_docker == 'true' && 'skipped (#skip-docker / :noimage)' || 'published' }}"
           } > "$release_asset"
           echo "release_asset=$release_asset" >> "$GITHUB_OUTPUT"
 

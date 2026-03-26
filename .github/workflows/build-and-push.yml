@@ -1,11 +1,21 @@
 name: Build and push Docker images
 
 on:
-  push:
-    branches: [ 'master' ]
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Generated release tag used for Docker image tags
+        required: true
+        type: string
+      skip_docker:
+        description: Skip Docker image build and push when true
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-and-push:
+    if: ${{ !inputs.skip_docker }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -13,6 +23,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -35,7 +47,7 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/pg-with-backup:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/pg-with-backup:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/pg-with-backup:${{ inputs.release_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -47,6 +59,6 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/pg-backup-walg:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/pg-backup-walg:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/pg-backup-walg:${{ inputs.release_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
