@@ -7,6 +7,10 @@ on:
         description: Generated release tag used for Docker image tags
         required: true
         type: string
+      source_ref:
+        description: Commit SHA or ref to build from
+        required: true
+        type: string
       skip_docker:
         description: Skip Docker image build and push when true
         required: false
@@ -24,7 +28,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ inputs.source_ref }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

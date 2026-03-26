@@ -27,9 +27,9 @@ jobs:
         id: docker_policy
         run: |
           commit_message="$(git log -1 --pretty=%B)"
-          if grep -q '#skip-docker' <<<"$commit_message"; then
+          if grep -Eq '#skip-docker|:noimage' <<<"$commit_message"; then
             echo "skip_docker=true" >> "$GITHUB_OUTPUT"
-            echo "Docker image publishing disabled for this release via #skip-docker."
+            echo "Docker image publishing disabled for this release via #skip-docker / :noimage."
           else
             echo "skip_docker=false" >> "$GITHUB_OUTPUT"
           fi
@@ -52,6 +52,7 @@ jobs:
     uses: ./.github/workflows/build-and-push.yml
     with:
       release_tag: ${{ needs.create-semver-tag.outputs.release_tag }}
+      source_ref: ${{ github.event.pull_request.merge_commit_sha }}
       skip_docker: ${{ needs.create-semver-tag.outputs.skip_docker == 'true' }}
     secrets: inherit
 
