@@ -10,7 +10,7 @@ This repository contains GitHub Actions workflows that:
 - On merged pull requests to `master`, it:
   - calculates the next semantic version tag from the latest repository tag (current baseline: `v2.3.0`)
   - defaults to a patch bump, unless the merge commit message includes `#major`, `#minor`, `#patch`, or `#none`
-  - skips Docker image build/push when the merge commit message includes `#skip-docker` (`:noimage`)
+  - skips Docker image build/push when the merge commit message includes `#skip-docker`
   - creates the new Git tag with `anothrNick/github-tag-action`
   - builds two images and pushes them to Docker Hub with tags `latest` and the generated semantic version tag:
     - `Dockerfile.postgres-walg` → `DOCKERHUB_USERNAME/pg-with-backup`
