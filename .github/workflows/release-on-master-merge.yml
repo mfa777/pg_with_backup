@@ -27,7 +27,7 @@ jobs:
         id: docker_policy
         run: |
           commit_message="$(git log -1 --pretty=%B)"
-          if grep -Eq '#skip-docker|:noimage' <<<"$commit_message"; then
+          if grep -Eq '(#skip-docker|:noimage)' <<<"$commit_message"; then
             echo "skip_docker=true" >> "$GITHUB_OUTPUT"
             echo "Docker image publishing disabled for this release via #skip-docker / :noimage."
           else
